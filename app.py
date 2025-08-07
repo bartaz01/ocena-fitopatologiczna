@@ -265,24 +265,21 @@ if liczba_ocen > 0 and wszystkie_cechy:
     dane_tabela = []
     for k in range(1, liczba_kombinacji + 1):
         for cecha in wszystkie_cechy:
+            wiersz = {"Kombinacja": f"K{k}", "Cecha": cecha}
             for p in range(1, liczba_ocen + 1):
                 rekord = next((r for r in st.session_state.zebrane_dane if r.get("Kombinacja") == k and r.get("Powtórzenie") == p), None)
-                wartosci = rekord.get(cecha, [0] * liczba_wynikow) if rekord else [0] * liczba_wynikow
+                wartosc = rekord.get(cecha, [0] * liczba_wynikow) if rekord else [0] * liczba_wynikow
                 for i in range(liczba_wynikow):
-                    dane_tabela.append({
-                        "Kombinacja": f"K{k}",
-                        "Cecha": cecha,
-                        "Powtórzenie": f"P{p}",
-                        "Wynik": wartosci[i],
-                        "Numer wyniku": i + 1
-                    })
-    if dane_tabela:
-        df_wyniki = pd.DataFrame(dane_tabela)
-        # Sortowanie dla czytelności: najpierw Kombinacja, potem Cecha, potem Powtórzenie, potem Numer wyniku
-        df_wyniki = df_wyniki.sort_values(by=["Kombinacja", "Cecha", "Powtórzenie", "Numer wyniku"])
-        st.dataframe(df_wyniki, use_container_width=True)
-    else:
-        st.info("Brak zapisanych wyników dla tej kombinacji.")
+                    if i == 0:
+                        wiersz[f"P{p}"] = wartosc[i]
+                    else:
+                        dane_tabela.append({"Kombinacja": f"K{k}", "Cecha": cecha, f"P{p}": wartosc[i]})
+            dane_tabela.append(wiersz)
+    df_wyniki = pd.DataFrame(dane_tabela)
+    # Pivot tabeli, aby uzyskać układ jak na obrazku
+    df_pivot = df_wyniki.pivot_table(index=["Kombinacja", "Cecha"], values=[f"P{p}" for p in range(1, liczba_ocen + 1)], aggfunc='first').reset_index()
+    df_pivot.columns = [col[1] if col[1] else col[0] for col in df_pivot.columns]
+    st.dataframe(df_pivot, use_container_width=True)
 else:
     st.info("Brak zapisanych wyników lub aktywnych cech dla tej kombinacji.")
 
