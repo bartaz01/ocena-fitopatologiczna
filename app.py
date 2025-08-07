@@ -264,24 +264,22 @@ st.markdown(f"### Wyniki dla Kombinacji {aktualna_kombinacja}")
 if liczba_ocen > 0 and wszystkie_cechy:
     dane_tabela = []
     for k in range(1, liczba_kombinacji + 1):
-        # Grupowanie wyników dla wszystkich cech w jednej kombinacji
-        for p in range(1, liczba_ocen + 1):
-            rekord = next((r for r in st.session_state.zebrane_dane if r.get("Kombinacja") == k and r.get("Powtórzenie") == p), None)
-            for cecha_idx, cecha in enumerate(wszystkie_cechy):
+        for cecha in wszystkie_cechy:
+            for p in range(1, liczba_ocen + 1):
+                rekord = next((r for r in st.session_state.zebrane_dane if r.get("Kombinacja") == k and r.get("Powtórzenie") == p), None)
                 wartosci = rekord.get(cecha, [0] * liczba_wynikow) if rekord else [0] * liczba_wynikow
                 for i in range(liczba_wynikow):
                     dane_tabela.append({
                         "Kombinacja": f"K{k}",
-                        "Powtórzenie": f"P{p}",
                         "Cecha": cecha,
+                        "Powtórzenie": f"P{p}",
                         "Wynik": wartosci[i],
                         "Numer wyniku": i + 1
                     })
     if dane_tabela:
         df_wyniki = pd.DataFrame(dane_tabela)
-        # Sortowanie dla czytelności: Kombinacja, Powtórzenie, Cecha, Numer wyniku
-        df_wyniki = df_wyniki.sort_values(by=["Kombinacja", "Powtórzenie", "Cecha", "Numer wyniku"])
-        # Wyświetlanie tabeli z wynikami w pionie pod każdą cechą
+        # Sortowanie dla czytelności: najpierw Kombinacja, potem Cecha, potem Powtórzenie, potem Numer wyniku
+        df_wyniki = df_wyniki.sort_values(by=["Kombinacja", "Cecha", "Powtórzenie", "Numer wyniku"])
         st.dataframe(df_wyniki, use_container_width=True)
     else:
         st.info("Brak zapisanych wyników dla tej kombinacji.")
