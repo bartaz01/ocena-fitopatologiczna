@@ -51,7 +51,7 @@ for key in ["powtorzenie", "kombinacja", "zebrane_dane"]:
     if key not in st.session_state:
         st.session_state[key] = 1 if key != "zebrane_dane" else []
 
-# Ustawienia liczby powtórzeń i kombinacji — minimalna 0, co oznacza brak tej warstwy
+# Ustawienia liczby powtórzeń i kombinacji — minimalna 0
 liczba_ocen = st.number_input("Liczba powtórzeń oceny (może być 0)", min_value=0, value=3, step=1)
 liczba_kombinacji = st.number_input("Liczba kombinacji (może być 0)", min_value=0, value=2, step=1)
 
@@ -65,8 +65,7 @@ herbologiczne = [c.strip() for c in herbologiczne_input.split(",") if c.strip()]
 insektycydowe = [c.strip() for c in insektycydowe_input.split(",") if c.strip()]
 wszystkie_cechy = fitopatologiczne + herbologiczne + insektycydowe
 
-# --- Obsługa nawigacji i zakresów ---
-# Ustaw domyślne wartości sesji na 1 jeśli 0 to ustawiamy na 1 aby uniknąć błędów indexowych
+# Obsługa sesji i wartości domyślnych
 if liczba_kombinacji == 0:
     st.session_state.kombinacja = 1
 else:
@@ -80,33 +79,14 @@ else:
 aktualna_kombinacja = st.session_state.kombinacja
 aktualne_powtorzenie = st.session_state.powtorzenie
 
-st.markdown(
-    f"<h3 style='color: #7f8c8d;'>Kombinacja {aktualna_kombinacja} – Powtórzenie {aktualne_powtorzenie}</h3>",
-    unsafe_allow_html=True,
-)
-
-# --- Mapka interaktywna ---
+# --- MAPKA NAD FORMULARZEM ---
 if liczba_kombinacji > 0 and liczba_ocen > 0:
     st.markdown("### Mapa powtórzeń i kombinacji — kliknij, aby przejść do wybranej oceny")
-
-    # Generujemy kwadraty - grid  z klikalnymi przyciskami
-    cols = st.columns(liczba_kombinacji)
-
-    # Mapa działa przez generowanie przycisków z callbackiem zmieniającym sesję
-
-    # Inna metoda: użyj jednej dużej siatki:
-    # Do grid kontenera w HTML dodałem klasę, ale Streamlit nie pozwala na łatwe mapowanie, więc robię wiersze ręcznie:
-
-    # Tworzymy grid kwadratów:
-    n_cols = min(8, liczba_kombinacji)  # max 8 kolumn, reszta w wierszach
-    rows = (liczba_kombinacji + n_cols - 1) // n_cols
 
     grid_html = "<div class='grid-container'>"
     for k in range(1, liczba_kombinacji + 1):
         for p in range(1, liczba_ocen + 1):
-            selected_class = ""
-            if k == aktualna_kombinacja and p == aktualne_powtorzenie:
-                selected_class = "selected"
+            selected_class = "selected" if (k == aktualna_kombinacja and p == aktualne_powtorzenie) else ""
             grid_html += (
                 f"<div class='grid-item {selected_class}' "
                 f"onclick='window.dispatchEvent(new CustomEvent(\"selectCell\", {{detail: {{komb: {k}, powt: {p}}}}}))'>"
@@ -117,7 +97,7 @@ if liczba_kombinacji > 0 and liczba_ocen > 0:
 
     st.markdown(grid_html, unsafe_allow_html=True)
 
-    # JavaScript do przesłania do Streamlit (niestety bez komponentów JS to tylko "hack")
+    # JS do przeładowania z parametrami w URL (kliknięcie mapki)
     st.markdown(
         """
         <script>
@@ -126,7 +106,6 @@ if liczba_kombinacji > 0 and liczba_ocen > 0:
             item.addEventListener('click', (e) => {
                 const komb = parseInt(e.target.textContent.match(/K(\\d+)/)[1]);
                 const powt = parseInt(e.target.textContent.match(/P(\\d+)/)[1]);
-                // przekierowanie przez Streamlit API na url z parametrami
                 window.location.href = window.location.pathname + `?kombinacja=${komb}&powtorzenie=${powt}`;
             });
         });
@@ -135,10 +114,9 @@ if liczba_kombinacji > 0 and liczba_ocen > 0:
         unsafe_allow_html=True,
     )
 else:
-    st.info("Mapa nie jest dostępna gdy liczba kombinacji lub powtórzeń jest 0.")
+    st.info("Mapa nie jest dostępna, gdy liczba kombinacji lub powtórzeń jest 0.")
 
-# --- Odczyt z query params, jeśli jest ---
-
+# --- Odczyt parametrów z URL ---
 params = st.experimental_get_query_params()
 if "kombinacja" in params:
     try:
@@ -158,8 +136,12 @@ if "powtorzenie" in params:
     except:
         pass
 
-# --- Formularz z nawigacją zamiast zapisu ---
-# Znajdź istniejący rekord
+st.markdown(
+    f"<h3 style='color: #7f8c8d;'>Kombinacja {aktualna_kombinacja} – Powtórzenie {aktualne_powtorzenie}</h3>",
+    unsafe_allow_html=True,
+)
+
+# --- Formularz ---
 istniejacy_rekord = None
 for rekord in st.session_state.zebrane_dane:
     if rekord.get("Kombinacja") == aktualna_kombinacja and rekord.get("Powtórzenie") == aktualne_powtorzenie:
@@ -188,7 +170,6 @@ with st.form(key="ocena_form"):
             f"{cecha}", min_value=0, value=wartosci_start[cecha], step=1, key=f"{cecha}_{aktualna_kombinacja}_{aktualne_powtorzenie}"
         )
 
-    # Przyciski nawigacyjne zamiast zapisz
     col1, col2, col3 = st.columns([1, 2, 1])
     with col1:
         poprzednie_disabled = aktualne_powtorzenie <= 1
@@ -216,10 +197,9 @@ if zapisz or poprzednie or nastepne:
         st.session_state.powtorzenie += 1
         st.experimental_rerun()
     else:
-        # Po prostu zapis bez zmiany powtórzenia
         st.experimental_rerun()
 
-# Wyświetlanie zapisanych wyników dla aktualnej kombinacji i powtórzenia
+# --- Wyświetlanie wyników dla aktualnej kombinacji i powtórzenia ---
 st.markdown("### Aktualne zapisane wyniki dla tej kombinacji i powtórzenia")
 if istniejacy_rekord:
     pokaz = {k: v for k, v in istniejacy_rekord.items() if k not in ["Kombinacja", "Powtórzenie"]}
@@ -230,7 +210,7 @@ else:
 
 st.write("---")
 
-# Średnie z całego zbioru
+# --- Średnie z całego zbioru ---
 if st.session_state.zebrane_dane:
     df_all = pd.DataFrame(st.session_state.zebrane_dane)
     df_all.fillna(0, inplace=True)
