@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import io
+from datetime import datetime
 
 st.set_page_config(page_title="Dziennik ocen", page_icon="ikona.jpg")
 
@@ -265,11 +266,15 @@ if liczba_ocen > 0 and wszystkie_cechy:
             if r.get("Kombinacja") == aktualna_kombinacja and r.get("Powtórzenie") == p:
                 rekord = r
                 break
-        wiersz = {"Kombinacja-Powtórzenie": f"K{aktualna_kombinacja}-P{p}"}
         for cecha in wszystkie_cechy:
             for i in range(liczba_wynikow):
-                wiersz[f"{cecha}_{i+1}"] = rekord.get(cecha, [0] * liczba_wynikow)[i] if rekord else 0
-        dane_tabela.append(wiersz)
+                wiersz = {
+                    "Powtórzenie": f"P{p}",
+                    "Cecha": cecha,
+                    "Numer wyniku": f"{i+1}",
+                    "Wartość": rekord.get(cecha, [0] * liczba_wynikow)[i] if rekord else 0
+                }
+                dane_tabela.append(wiersz)
     df_wyniki = pd.DataFrame(dane_tabela)
     st.dataframe(df_wyniki, use_container_width=True)  # Użycie dataframe dla suwaka
 else:
@@ -299,20 +304,25 @@ st.divider()
 
 # Eksport danych
 if st.button("Eksportuj wszystko do Excela"):
+    current_date = datetime.now().strftime("%Y-%m-%d")  # Pobieranie bieżącej daty
     df_export = []
     for rekord in st.session_state.zebrane_dane:
-        wiersz = {"Kombinacja": rekord["Kombinacja"], "Powtórzenie": rekord["Powtórzenie"]}
         for cecha in wszystkie_cechy:
             for i in range(liczba_wynikow):
-                wiersz[f"{cecha}_{i+1}"] = rekord.get(cecha, [0] * liczba_wynikow)[i]
-        df_export.append(wiersz)
+                wiersz = {
+                    "Kombinacja": rekord["Kombinacja"],
+                    "Powtórzenie": rekord["Powtórzenie"],
+                    "Cecha": cecha,
+                    f"{i+1}": rekord.get(cecha, [0] * liczba_wynikow)[i]
+                }
+                df_export.append(wiersz)
     df_export = pd.DataFrame(df_export)
     buffer = io.BytesIO()
     df_export.to_excel(buffer, index=False)
     st.download_button(
         label="Pobierz plik Excel",
         data=buffer,
-        file_name="oceny_krokowe.xlsx",
+        file_name=f"oceny_{current_date}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
     st.success("Plik gotowy do pobrania!")
