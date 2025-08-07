@@ -201,7 +201,7 @@ with st.form(key="ocena_form"):
                     wartosci[cecha].append(wartosc)
 
     # Dodanie przycisku submit
-    st.form_submit_button("Zapisz oceny")
+    submit_button = st.form_submit_button("Zapisz oceny")
 
     st.markdown(
         """
@@ -216,21 +216,9 @@ with st.form(key="ocena_form"):
         """,
         unsafe_allow_html=True,
     )
-    col1, col2, col3, col4, col5 = st.columns([1.5, 1.5, 2, 1.5, 1.5])
-    with col1:
-        poprzednie_komb_disabled = aktualna_kombinacja <= 1
-        poprzednie_komb = st.form_submit_button("Poprz. kombinacja", disabled=poprzednie_komb_disabled)
-    with col2:
-        poprzednie_disabled = aktualne_powtorzenie <= 1
-        poprzednie = st.form_submit_button("Poprz. powtórzenie", disabled=poprzednie_disabled)
-    with col4:
-        nastepne_disabled = aktualne_powtorzenie >= liczba_ocen or liczba_ocen == 0
-        nastepne = st.form_submit_button("Nast. powtórzenie", disabled=nastepne_disabled)
-    with col5:
-        nastepne_komb_disabled = aktualna_kombinacja >= liczba_kombinacji or liczba_kombinacji == 0
-        nastepne_komb = st.form_submit_button("Nast. kombinacja", disabled=nastepne_komb_disabled)
 
-if zapisz or poprzednie or nastepne or poprzednie_komb or nastepne_komb:
+# Logika zapisu i nawigacji po submit
+if submit_button:
     rekord = {"Kombinacja": aktualna_kombinacja, "Powtórzenie": aktualne_powtorzenie}
     rekord.update(wartosci)
 
@@ -239,23 +227,37 @@ if zapisz or poprzednie or nastepne or poprzednie_komb or nastepne_komb:
         st.session_state.zebrane_dane[index] = rekord
     else:
         st.session_state.zebrane_dane.append(rekord)
+    st.rerun()
 
-    if poprzednie_komb and aktualna_kombinacja > 1:
-        st.session_state.kombinacja -= 1
-        st.session_state.powtorzenie = 1
-        st.rerun()
-    elif nastepne_komb and aktualna_kombinacja < liczba_kombinacji:
-        st.session_state.kombinacja += 1
-        st.session_state.powtorzenie = 1
-        st.rerun()
-    elif poprzednie and aktualne_powtorzenie > 1:
-        st.session_state.powtorzenie -= 1
-        st.rerun()
-    elif nastepne and aktualne_powtorzenie < liczba_ocen:
-        st.session_state.powtorzenie += 1
-        st.rerun()
-    else:
-        st.rerun()
+# Nawigacja poza formularzem
+col1, col2, col3, col4, col5 = st.columns([1.5, 1.5, 2, 1.5, 1.5])
+with col1:
+    poprzednie_komb_disabled = aktualna_kombinacja <= 1
+    poprzednie_komb = st.button("Poprz. kombinacja", disabled=poprzednie_komb_disabled, key="prev_comb")
+with col2:
+    poprzednie_disabled = aktualne_powtorzenie <= 1
+    poprzednie = st.button("Poprz. powtórzenie", disabled=poprzednie_disabled, key="prev_rep")
+with col4:
+    nastepne_disabled = aktualne_powtorzenie >= liczba_ocen or liczba_ocen == 0
+    nastepne = st.button("Nast. powtórzenie", disabled=nastepne_disabled, key="next_rep")
+with col5:
+    nastepne_komb_disabled = aktualna_kombinacja >= liczba_kombinacji or liczba_kombinacji == 0
+    nastepne_komb = st.button("Nast. kombinacja", disabled=nastepne_komb_disabled, key="next_comb")
+
+if poprzednie_komb and aktualna_kombinacja > 1:
+    st.session_state.kombinacja -= 1
+    st.session_state.powtorzenie = 1
+    st.rerun()
+elif nastepne_komb and aktualna_kombinacja < liczba_kombinacji:
+    st.session_state.kombinacja += 1
+    st.session_state.powtorzenie = 1
+    st.rerun()
+elif poprzednie and aktualne_powtorzenie > 1:
+    st.session_state.powtorzenie -= 1
+    st.rerun()
+elif nastepne and aktualne_powtorzenie < liczba_ocen:
+    st.session_state.powtorzenie += 1
+    st.rerun()
 
 # --- Wyświetlanie wyników dla wszystkich powtórzeń w bieżącej kombinacji ---
 st.markdown(f"### Wyniki dla Kombinacji {aktualna_kombinacja}")
@@ -263,21 +265,24 @@ if liczba_ocen > 0 and wszystkie_cechy:
     dane_tabela = []
     for k in range(1, liczba_kombinacji + 1):
         for cecha in wszystkie_cechy:
-            wiersz = {"Kombinacja": f"K{k}", "Cecha": cecha}
             for p in range(1, liczba_ocen + 1):
                 rekord = next((r for r in st.session_state.zebrane_dane if r.get("Kombinacja") == k and r.get("Powtórzenie") == p), None)
-                wartosc = rekord.get(cecha, [0] * liczba_wynikow) if rekord else [0] * liczba_wynikow
+                wartosci = rekord.get(cecha, [0] * liczba_wynikow) if rekord else [0] * liczba_wynikow
                 for i in range(liczba_wynikow):
-                    if i == 0:
-                        wiersz[f"P{p}"] = wartosc[i]
-                    else:
-                        dane_tabela.append({"Kombinacja": f"K{k}", "Cecha": cecha, f"P{p}": wartosc[i]})
-            dane_tabela.append(wiersz)
-    df_wyniki = pd.DataFrame(dane_tabela)
-    # Pivot tabeli, aby uzyskać układ jak na obrazku
-    df_pivot = df_wyniki.pivot_table(index=["Kombinacja", "Cecha"], values=[f"P{p}" for p in range(1, liczba_ocen + 1)], aggfunc='first').reset_index()
-    df_pivot.columns = [col[1] if col[1] else col[0] for col in df_pivot.columns]
-    st.dataframe(df_pivot, use_container_width=True)
+                    dane_tabela.append({
+                        "Kombinacja": f"K{k}",
+                        "Cecha": cecha,
+                        "Powtórzenie": f"P{p}",
+                        "Wynik": wartosci[i],
+                        "Numer wyniku": i + 1
+                    })
+    if dane_tabela:
+        df_wyniki = pd.DataFrame(dane_tabela)
+        # Sortowanie dla czytelności: najpierw Kombinacja, potem Cecha, potem Powtórzenie, potem Numer wyniku
+        df_wyniki = df_wyniki.sort_values(by=["Kombinacja", "Cecha", "Powtórzenie", "Numer wyniku"])
+        st.dataframe(df_wyniki, use_container_width=True)
+    else:
+        st.info("Brak zapisanych wyników dla tej kombinacji.")
 else:
     st.info("Brak zapisanych wyników lub aktywnych cech dla tej kombinacji.")
 
