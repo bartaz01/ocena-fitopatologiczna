@@ -56,9 +56,9 @@ for key in ["powtorzenie", "kombinacja", "zebrane_dane", "fitopatologiczne_aktyw
     if key not in st.session_state:
         st.session_state[key] = 1 if key in ["powtorzenie", "kombinacja"] else [] if key == "zebrane_dane" else True
 
-# Ustawienia liczby powtórzeń, kombinacji i wyników
-liczba_ocen = st.number_input("Liczba powtórzeń oceny (może być 0)", min_value=0, value=3, step=1)
+# Ustawienia liczby kombinacji, powtórzeń i wyników (zmieniona kolejność)
 liczba_kombinacji = st.number_input("Liczba kombinacji (może być 0)", min_value=0, value=2, step=1)
+liczba_ocen = st.number_input("Liczba powtórzeń oceny (może być 0)", min_value=0, value=3, step=1)
 liczba_wynikow = st.number_input("Liczba wyników w powtórzeniu", min_value=1, max_value=100, value=1, step=1)
 
 # Opcje Tak/Nie dla kategorii
@@ -134,71 +134,35 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# --- Formularz ---
+# --- Formularz (przywrócony pierwotny wygląd) ---
 istniejacy_rekord = None
 for rekord in st.session_state.zebrane_dane:
     if rekord.get("Kombinacja") == aktualna_kombinacja and rekord.get("Powtórzenie") == aktualne_powtorzenie:
         istniejacy_rekord = rekord
         break
 
-wartosci_start = {cecha: [0] * liczba_wynikow for cecha in wszystkie_cechy}  # Inicjalizacja listy wyników dla każdej cechy
+wartosci_start = {cecha: 0 for cecha in wszystkie_cechy}  # Przywrócenie jednej wartości na cechę
 
 with st.form(key="ocena_form"):
     wartosci = {}
     if st.session_state.fitopatologiczne_aktywne:
         st.markdown("#### Oceny fitopatologiczne")
         for cecha in fitopatologiczne:
-            st.markdown(f"**{cecha}**")
-            wartosci[cecha] = []
-            cols = st.columns(liczba_wynikow)
-            for i in range(liczba_wynikow):
-                with cols[i]:
-                    klucz = f"{cecha}_{aktualna_kombinacja}_{aktualne_powtorzenie}_{i}"
-                    wartosc = st.number_input(
-                        f"{i+1}",
-                        min_value=0,
-                        value=istniejacy_rekord.get(cecha, [0] * liczba_wynikow)[i] if istniejacy_rekord else 0,
-                        step=1,
-                        key=klucz,
-                        format="%d"
-                    )
-                    wartosci[cecha].append(wartosc)
+            wartosci[cecha] = st.number_input(
+                f"{cecha}", min_value=0, value=wartosci_start[cecha], step=1, key=f"{cecha}_{aktualna_kombinacja}_{aktualne_powtorzenie}"
+            )
     if st.session_state.herbologiczne_aktywne:
         st.markdown("#### Oceny herbologiczne")
         for cecha in herbologiczne:
-            st.markdown(f"**{cecha}**")
-            wartosci[cecha] = []
-            cols = st.columns(liczba_wynikow)
-            for i in range(liczba_wynikow):
-                with cols[i]:
-                    klucz = f"{cecha}_{aktualna_kombinacja}_{aktualne_powtorzenie}_{i}"
-                    wartosc = st.number_input(
-                        f"{i+1}",
-                        min_value=0,
-                        value=istniejacy_rekord.get(cecha, [0] * liczba_wynikow)[i] if istniejacy_rekord else 0,
-                        step=1,
-                        key=klucz,
-                        format="%d"
-                    )
-                    wartosci[cecha].append(wartosc)
+            wartosci[cecha] = st.number_input(
+                f"{cecha}", min_value=0, value=wartosci_start[cecha], step=1, key=f"{cecha}_{aktualna_kombinacja}_{aktualne_powtorzenie}"
+            )
     if st.session_state.insektycydowe_aktywne:
         st.markdown("#### Oceny insektycydowe")
         for cecha in insektycydowe:
-            st.markdown(f"**{cecha}**")
-            wartosci[cecha] = []
-            cols = st.columns(liczba_wynikow)
-            for i in range(liczba_wynikow):
-                with cols[i]:
-                    klucz = f"{cecha}_{aktualna_kombinacja}_{aktualne_powtorzenie}_{i}"
-                    wartosc = st.number_input(
-                        f"{i+1}",
-                        min_value=0,
-                        value=istniejacy_rekord.get(cecha, [0] * liczba_wynikow)[i] if istniejacy_rekord else 0,
-                        step=1,
-                        key=klucz,
-                        format="%d"
-                    )
-                    wartosci[cecha].append(wartosc)
+            wartosci[cecha] = st.number_input(
+                f"{cecha}", min_value=0, value=wartosci_start[cecha], step=1, key=f"{cecha}_{aktualna_kombinacja}_{aktualne_powtorzenie}"
+            )
 
     st.markdown(
         """
@@ -260,23 +224,20 @@ if zapisz or poprzednie or nastepne or poprzednie_komb or nastepne_komb:
 st.markdown(f"### Wyniki dla Kombinacji {aktualna_kombinacja}")
 if liczba_ocen > 0 and wszystkie_cechy:
     dane_tabela = []
-    for p in range(1, liczba_ocen + 1):
-        rekord = None
-        for r in st.session_state.zebrane_dane:
-            if r.get("Kombinacja") == aktualna_kombinacja and r.get("Powtórzenie") == p:
-                rekord = r
-                break
+    for k in range(1, liczba_kombinacji + 1):
         for cecha in wszystkie_cechy:
-            for i in range(liczba_wynikow):
-                wiersz = {
-                    "Powtórzenie": f"P{p}",
-                    "Cecha": cecha,
-                    "Numer wyniku": f"{i+1}",
-                    "Wartość": rekord.get(cecha, [0] * liczba_wynikow)[i] if rekord else 0
-                }
-                dane_tabela.append(wiersz)
+            for i in range(1, liczba_wynikow + 1):
+                wiersz = {"Kombinacja": f"K{k}"}
+                for p in range(1, liczba_ocen + 1):
+                    rekord = next((r for r in st.session_state.zebrane_dane if r.get("Kombinacja") == k and r.get("Powtórzenie") == p), None)
+                    wartosc = rekord.get(cecha, 0) if rekord else 0
+                    wiersz[f"P{p}"] = wartosc
+                dane_tabela.append({"Kombinacja": f"K{k}", "Cecha": cecha, f"{i}": wiersz["P1"]})
     df_wyniki = pd.DataFrame(dane_tabela)
-    st.dataframe(df_wyniki, use_container_width=True)  # Użycie dataframe dla suwaka
+    # Pivot tabeli, aby uzyskać układ jak na obrazku
+    df_pivot = df_wyniki.pivot_table(index=["Kombinacja", "Cecha"], columns="Numer wyniku", values=[f"{i}" for i in range(1, liczba_wynikow + 1)], aggfunc='first').reset_index()
+    df_pivot.columns = [col[1] if col[1] else col[0] for col in df_pivot.columns]
+    st.dataframe(df_pivot, use_container_width=True)
 else:
     st.info("Brak zapisanych wyników lub aktywnych cech dla tej kombinacji.")
 
@@ -286,15 +247,9 @@ st.divider()
 if st.session_state.zebrane_dane and wszystkie_cechy:
     df_all = pd.DataFrame(st.session_state.zebrane_dane)
     df_all.fillna(0, inplace=True)
-    srednie = []
-    for cecha in wszystkie_cechy:
-        if cecha in df_all.columns:
-            wyniki = []
-            for lista in df_all[cecha]:
-                wyniki.extend(lista)
-            srednia = pd.Series(wyniki).mean().round(2)
-            srednie.append({"Cecha": cecha, "Średnia wartość": srednia})
-    srednie_df = pd.DataFrame(srednie)
+    srednie = df_all[wszystkie_cechy].mean().round(2)
+    srednie_df = srednie.reset_index()
+    srednie_df.columns = ["Cecha", "Średnia wartość"]
     st.markdown("### Średnie wartości podsumowane dla wszystkich kombinacji i powtórzeń")
     st.table(srednie_df)
 else:
@@ -305,18 +260,7 @@ st.divider()
 # Eksport danych
 if st.button("Eksportuj wszystko do Excela"):
     current_date = datetime.now().strftime("%Y-%m-%d")  # Pobieranie bieżącej daty
-    df_export = []
-    for rekord in st.session_state.zebrane_dane:
-        for cecha in wszystkie_cechy:
-            for i in range(liczba_wynikow):
-                wiersz = {
-                    "Kombinacja": rekord["Kombinacja"],
-                    "Powtórzenie": rekord["Powtórzenie"],
-                    "Cecha": cecha,
-                    f"{i+1}": rekord.get(cecha, [0] * liczba_wynikow)[i]
-                }
-                df_export.append(wiersz)
-    df_export = pd.DataFrame(df_export)
+    df_export = pd.DataFrame(st.session_state.zebrane_dane)
     buffer = io.BytesIO()
     df_export.to_excel(buffer, index=False)
     st.download_button(
