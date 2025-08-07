@@ -226,16 +226,15 @@ if liczba_ocen > 0 and wszystkie_cechy:
     dane_tabela = []
     for k in range(1, liczba_kombinacji + 1):
         for cecha in wszystkie_cechy:
-            for i in range(1, liczba_wynikow + 1):
-                wiersz = {"Kombinacja": f"K{k}"}
-                for p in range(1, liczba_ocen + 1):
-                    rekord = next((r for r in st.session_state.zebrane_dane if r.get("Kombinacja") == k and r.get("Powtórzenie") == p), None)
-                    wartosc = rekord.get(cecha, 0) if rekord else 0
-                    wiersz[f"P{p}"] = wartosc
-                dane_tabela.append({"Kombinacja": f"K{k}", "Cecha": cecha, f"{i}": wiersz["P1"]})
+            wiersz = {"Kombinacja": f"K{k}", "Cecha": cecha}
+            for p in range(1, liczba_ocen + 1):
+                rekord = next((r for r in st.session_state.zebrane_dane if r.get("Kombinacja") == k and r.get("Powtórzenie") == p), None)
+                wartosc = rekord.get(cecha, 0) if rekord else 0
+                wiersz[f"P{p}"] = wartosc
+            dane_tabela.append(wiersz)
     df_wyniki = pd.DataFrame(dane_tabela)
-    # Pivot tabeli, aby uzyskać układ jak na obrazku
-    df_pivot = df_wyniki.pivot_table(index=["Kombinacja", "Cecha"], columns="Numer wyniku", values=[f"{i}" for i in range(1, liczba_wynikow + 1)], aggfunc='first').reset_index()
+    # Pivot tabeli, aby uzyskać układ jak na obrazku (Kombinacje w wierszach, Powtórzenia w kolumnach)
+    df_pivot = df_wyniki.pivot_table(index=["Kombinacja", "Cecha"], values=[f"P{p}" for p in range(1, liczba_ocen + 1)], aggfunc='first').reset_index()
     df_pivot.columns = [col[1] if col[1] else col[0] for col in df_pivot.columns]
     st.dataframe(df_pivot, use_container_width=True)
 else:
