@@ -192,12 +192,12 @@ if zapisz or poprzednie or nastepne:
 
     if poprzednie and aktualne_powtorzenie > 1:
         st.session_state.powtorzenie -= 1
-        st.rerun()
+         st.experimental_rerun()
     elif nastepne and aktualne_powtorzenie < liczba_ocen:
         st.session_state.powtorzenie += 1
         st.experimental_rerun()
     else:
-        st.rerun()
+         st.experimental_rerun()
 
 # --- Wyświetlanie wyników dla aktualnej kombinacji i powtórzenia ---
 st.markdown("### Aktualne zapisane wyniki dla tej kombinacji i powtórzenia")
