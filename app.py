@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import io
 
 st.set_page_config(page_title="Ocena Fitopatologiczna", page_icon="ikona.jpg")
 
@@ -111,26 +112,12 @@ if liczba_kombinacji > 0 and liczba_ocen > 0:
     grid_html += "</div>"
 
     st.markdown(grid_html, unsafe_allow_html=True)
-
-    # JS do obsługi kliknięcia
-    st.markdown(
-        """
-        <script>
-        window.addEventListener('selectCell', (event) => {
-            const komb = event.detail.komb;
-            const powt = event.detail.powt;
-            window.location.href = window.location.pathname + `?kombinacja=${komb}&powtorzenie=${powt}`;
-        });
-        </script>
-        """,
-        unsafe_allow_html=True,
-    )
 else:
     st.info("Mapa nie jest dostępna, gdy liczba kombinacji lub powtórzeń jest 0.")
 
 # --- Odczyt parametrów z URL ---
 params = st.query_params
-if "kombinacja" in params:
+if params.get("kombinacja"):
     try:
         k = int(params["kombinacja"])
         if 1 <= k <= max(liczba_kombinacji, 1):
@@ -139,7 +126,7 @@ if "kombinacja" in params:
     except:
         pass
 
-if "powtorzenie" in params:
+if params.get("powtorzenie"):
     try:
         p = int(params["powtorzenie"])
         if 1 <= p <= max(liczba_ocen, 1):
@@ -185,17 +172,23 @@ with st.form(key="ocena_form"):
                 f"{cecha}", min_value=0, value=wartosci_start[cecha], step=1, key=f"{cecha}_{aktualna_kombinacja}_{aktualne_powtorzenie}"
             )
 
-    col1, col2, col3 = st.columns([1, 2, 1])
+    col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
     with col1:
+        poprzednie_komb_disabled = aktualna_kombinacja <= 1
+        poprzednie_komb = st.form_submit_button("Poprzednia kombinacja", disabled=poprzednie_komb_disabled)
+    with col2:
         poprzednie_disabled = aktualne_powtorzenie <= 1
         poprzednie = st.form_submit_button("Poprzednie powtórzenie", disabled=poprzednie_disabled)
-    with col2:
-        zapisz = st.form_submit_button("Zapisz oceny")
     with col3:
+        zapisz = st.form_submit_button("Zapisz oceny")
+    with col4:
         nastepne_disabled = aktualne_powtorzenie >= liczba_ocen or liczba_ocen == 0
         nastepne = st.form_submit_button("Następne powtórzenie", disabled=nastepne_disabled)
+    with col5:
+        nastepne_komb_disabled = aktualna_kombinacja >= liczba_kombinacji or liczba_kombinacji == 0
+        nastepne_komb = st.form_submit_button("Następna kombinacja", disabled=nastepne_komb_disabled)
 
-if zapisz or poprzednie or nastepne:
+if zapisz or poprzednie or nastepne or poprzednie_komb or nastepne_komb:
     rekord = {"Kombinacja": aktualna_kombinacja, "Powtórzenie": aktualne_powtorzenie}
     rekord.update(wartosci)
 
@@ -205,7 +198,15 @@ if zapisz or poprzednie or nastepne:
     else:
         st.session_state.zebrane_dane.append(rekord)
 
-    if poprzednie and aktualne_powtorzenie > 1:
+    if poprzednie_komb and aktualna_kombinacja > 1:
+        st.session_state.kombinacja -= 1
+        st.session_state.powtorzenie = 1
+        st.rerun()
+    elif nastepne_komb and aktualna_kombinacja < liczba_kombinacji:
+        st.session_state.kombinacja += 1
+        st.session_state.powtorzenie = 1
+        st.rerun()
+    elif poprzednie and aktualne_powtorzenie > 1:
         st.session_state.powtorzenie -= 1
         st.rerun()
     elif nastepne and aktualne_powtorzenie < liczba_ocen:
@@ -214,14 +215,24 @@ if zapisz or poprzednie or nastepne:
     else:
         st.rerun()
 
-# --- Wyświetlanie wyników dla aktualnej kombinacji i powtórzenia ---
-st.markdown("### Aktualne zapisane wyniki dla tej kombinacji i powtórzenia")
-if istniejacy_rekord:
-    pokaz = {k: v for k, v in istniejacy_rekord.items() if k in wszystkie_cechy or k in ["Kombinacja", "Powtórzenie"]}
-    df_wyniki = pd.DataFrame(pokaz.items(), columns=["Cecha", "Wartość"])
-    st.table(df_wyniki)
+# --- Wyświetlanie wyników dla wszystkich powtórzeń w bieżącej kombinacji ---
+st.markdown(f"### Wyniki dla Kombinacji {aktualna_kombinacja}")
+if st.session_state.zebrane_dane:
+    for p in range(1, liczba_ocen + 1):
+        rekord = None
+        for r in st.session_state.zebrane_dane:
+            if r.get("Kombinacja") == aktualna_kombinacja and r.get("Powtórzenie") == p:
+                rekord = r
+                break
+        if rekord:
+            st.markdown(f"#### Powtórzenie {p}")
+            pokaz = {k: v for k, v in rekord.items() if k in wszystkie_cechy or k in ["Kombinacja", "Powtórzenie"]}
+            df_wyniki = pd.DataFrame(pokaz.items(), columns=["Cecha", "Wartość"])
+            st.table(df_wyniki)
+        else:
+            st.info(f"Brak zapisanych wyników dla Powtórzenia {p} w Kombinacji {aktualna_kombinacja}.")
 else:
-    st.info("Brak zapisanych wyników dla tej kombinacji i powtórzenia.")
+    st.info("Brak zapisanych wyników dla tej kombinacji.")
 
 st.write("---")
 
