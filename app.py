@@ -197,7 +197,7 @@ if zapisz or poprzednie or nastepne:
         st.session_state.powtorzenie += 1
         st.rerun()
     else:
-         st.rerun()
+        st.rerun()
 
 # --- Wyświetlanie wyników dla aktualnej kombinacji i powtórzenia ---
 st.markdown("### Aktualne zapisane wyniki dla tej kombinacji i powtórzenia")
