@@ -278,9 +278,18 @@ if liczba_ocen > 0 and wszystkie_cechy:
                     })
     if dane_tabela:
         df_wyniki = pd.DataFrame(dane_tabela)
-        # Sortowanie dla czytelności: najpierw Kombinacja, potem Cecha, potem Powtórzenie, potem Numer wyniku
-        df_wyniki = df_wyniki.sort_values(by=["Kombinacja", "Cecha", "Powtórzenie", "Numer wyniku"])
-        st.dataframe(df_wyniki, use_container_width=True)
+        # Pivot tabeli, aby uzyskać układ z zdjęcia: Kombinacje i Cechy w indeksach, Powtórzenia w kolumnach
+        df_pivot = df_wyniki.pivot_table(
+            index=["Kombinacja", "Cecha", "Numer wyniku"],
+            columns="Powtórzenie",
+            values="Wynik",
+            aggfunc='first'
+        ).reset_index()
+        # Nazwy kolumn bez multiindexu dla czytelności
+        df_pivot.columns = [col[1] if col[1] else col[0] for col in df_pivot.columns]
+        # Sortowanie dla zgodności z obrazkiem
+        df_pivot = df_pivot.sort_values(by=["Kombinacja", "Cecha", "Numer wyniku"])
+        st.dataframe(df_pivot, use_container_width=True)
     else:
         st.info("Brak zapisanych wyników dla tej kombinacji.")
 else:
