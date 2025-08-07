@@ -272,21 +272,28 @@ if liczba_ocen > 0 and wszystkie_cechy:
                     dane_tabela.append({
                         "Kombinacja": f"K{k}",
                         "Cecha": cecha,
-                        "Powtórzenie": f"P{p}",
-                        "Wynik": wartosci[i],
-                        "Numer wyniku": i + 1
+                        "Numer wyniku": i + 1,
+                        "Wynik": wartosci[i]
                     })
     if dane_tabela:
         df_wyniki = pd.DataFrame(dane_tabela)
         # Pivot tabeli, aby uzyskać układ z zdjęcia: Kombinacje i Cechy w indeksach, Powtórzenia w kolumnach
         df_pivot = df_wyniki.pivot_table(
             index=["Kombinacja", "Cecha", "Numer wyniku"],
-            columns="Powtórzenie",
+            columns="Wynik",
             values="Wynik",
             aggfunc='first'
         ).reset_index()
-        # Nazwy kolumn bez multiindexu dla czytelności
-        df_pivot.columns = [col[1] if col[1] else col[0] for col in df_pivot.columns]
+        # Przekształcenie na prostsze kolumny
+        df_pivot = df_pivot.reset_index(drop=True)
+        # Dodanie kolumn dla każdego powtórzenia
+        df_pivot = df_pivot.pivot_table(
+            index=["Kombinacja", "Cecha", "Numer wyniku"],
+            columns="Wynik",
+            values="Wynik",
+            aggfunc='first'
+        ).reset_index()
+        df_pivot.columns = [f"P{p}" for p in range(1, liczba_ocen + 1)]  # Tymczasowe nazwy kolumn
         # Sortowanie dla zgodności z obrazkiem
         df_pivot = df_pivot.sort_values(by=["Kombinacja", "Cecha", "Numer wyniku"])
         st.dataframe(df_pivot, use_container_width=True)
