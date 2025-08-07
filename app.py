@@ -117,7 +117,7 @@ else:
     st.info("Mapa nie jest dostępna, gdy liczba kombinacji lub powtórzeń jest 0.")
 
 # --- Odczyt parametrów z URL ---
-params = st.experimental_get_query_params()
+params = st.query_params
 if "kombinacja" in params:
     try:
         k = int(params["kombinacja"][0])
