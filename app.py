@@ -14,13 +14,13 @@ st.markdown(
     .grid-item {
         background-color: #3498db;
         color: white;
-        padding: 6px;
+        padding: 8px;
         text-align: center;
         border-radius: 5px;
         cursor: pointer;
         user-select: none;
         font-weight: bold;
-        font-size: 12px;
+        font-size: 14px;
         transition: background-color 0.3s ease;
     }
     .grid-item:hover {
@@ -68,7 +68,7 @@ herbologiczne = []
 insektycydowe = []
 
 if st.session_state.fitopatologiczne_aktywne:
-    fitopatologiczne_input = st.text_input("Choroby fitopatologiczne (np. V, S, Z)", "V, S, Z")
+    fitopatologiczne_input = st.text_input("Choroby fitopatologiczne (np. Sucha, Werti, Zgnilizna)", "Sucha, Werti, Zgnilizna")
     fitopatologiczne = [c.strip() for c in fitopatologiczne_input.split(",") if c.strip()]
 
 if st.session_state.herbologiczne_aktywne:
@@ -109,7 +109,7 @@ if liczba_kombinacji > 0 and liczba_ocen > 0:
                     st.session_state.powtorzenie = p
                     st.rerun()
                 st.markdown(
-                    f"<div class='grid-item {selected_class}' style='margin: 2px; padding: 6px; font-size: 12px;'>{k}-{p}</div>",
+                    f"<div class='grid-item {selected_class}' style='margin: 2px; padding: 8px; font-size: 14px;'>{k}-{p}</div>",
                     unsafe_allow_html=True,
                 )
 else:
@@ -208,43 +208,20 @@ if zapisz or poprzednie or nastepne or poprzednie_komb or nastepne_komb:
 
 # --- Wyświetlanie wyników dla wszystkich powtórzeń w bieżącej kombinacji ---
 st.markdown(f"### Wyniki dla Kombinacji {aktualna_kombinacja}")
-if st.session_state.zebrane_dane:
-    if liczba_kombinacji == 1:
-        # Jedna tabela dla wszystkich powtórzeń
-        dane_tabela = []
-        for p in range(1, liczba_ocen + 1):
-            rekord = None
-            for r in st.session_state.zebrane_dane:
-                if r.get("Kombinacja") == aktualna_kombinacja and r.get("Powtórzenie") == p:
-                    rekord = r
-                    break
-            if rekord:
-                wiersz = {"Powtórzenie": p}
-                for cecha in wszystkie_cechy:
-                    wiersz[cecha] = rekord.get(cecha, 0)
-                dane_tabela.append(wiersz)
-            else:
-                wiersz = {"Powtórzenie": p}
-                for cecha in wszystkie_cechy:
-                    wiersz[cecha] = 0
-                dane_tabela.append(wiersz)
-        df_wyniki = pd.DataFrame(dane_tabela)
-        st.table(df_wyniki)
-    else:
-        # Oddzielne tabelki dla każdego powtórzenia
-        for p in range(1, liczba_ocen + 1):
-            rekord = None
-            for r in st.session_state.zebrane_dane:
-                if r.get("Kombinacja") == aktualna_kombinacja and r.get("Powtórzenie") == p:
-                    rekord = r
-                    break
-            if rekord:
-                st.markdown(f"#### Powtórzenie {p}")
-                pokaz = {k: v for k, v in rekord.items() if k in wszystkie_cechy or k in ["Kombinacja", "Powtórzenie"]}
-                df_wyniki = pd.DataFrame(pokaz.items(), columns=["Cecha", "Wartość"])
-                st.table(df_wyniki)
-            else:
-                st.info(f"Brak zapisanych wyników dla Powtórzenia {p} w Kombinacji {aktualna_kombinacja}.")
+if liczba_ocen > 0:
+    dane_tabela = []
+    for p in range(1, liczba_ocen + 1):
+        rekord = None
+        for r in st.session_state.zebrane_dane:
+            if r.get("Kombinacja") == aktualna_kombinacja and r.get("Powtórzenie") == p:
+                rekord = r
+                break
+        wiersz = {"Kombinacja-Powtórzenie": f"K{aktualna_kombinacja}-P{p}"}
+        for cecha in wszystkie_cechy:
+            wiersz[cecha] = rekord.get(cecha, 0) if rekord else 0
+        dane_tabela.append(wiersz)
+    df_wyniki = pd.DataFrame(dane_tabela)
+    st.table(df_wyniki)
 else:
     st.info("Brak zapisanych wyników dla tej kombinacji.")
 
