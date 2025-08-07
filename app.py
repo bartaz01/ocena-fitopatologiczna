@@ -201,7 +201,7 @@ with st.form(key="ocena_form"):
                     wartosci[cecha].append(wartosc)
 
     # Dodanie przycisku submit
-    submit_button = st.form_submit_button("Zapisz oceny")
+    st.form_submit_button("Zapisz oceny")
 
     st.markdown(
         """
@@ -216,9 +216,21 @@ with st.form(key="ocena_form"):
         """,
         unsafe_allow_html=True,
     )
+    col1, col2, col3, col4, col5 = st.columns([1.5, 1.5, 2, 1.5, 1.5])
+    with col1:
+        poprzednie_komb_disabled = aktualna_kombinacja <= 1
+        poprzednie_komb = st.form_submit_button("Poprz. kombinacja", disabled=poprzednie_komb_disabled)
+    with col2:
+        poprzednie_disabled = aktualne_powtorzenie <= 1
+        poprzednie = st.form_submit_button("Poprz. powtórzenie", disabled=poprzednie_disabled)
+    with col4:
+        nastepne_disabled = aktualne_powtorzenie >= liczba_ocen or liczba_ocen == 0
+        nastepne = st.form_submit_button("Nast. powtórzenie", disabled=nastepne_disabled)
+    with col5:
+        nastepne_komb_disabled = aktualna_kombinacja >= liczba_kombinacji or liczba_kombinacji == 0
+        nastepne_komb = st.form_submit_button("Nast. kombinacja", disabled=nastepne_komb_disabled)
 
-# Logika zapisu i nawigacji po submit
-if submit_button:
+if zapisz or poprzednie or nastepne or poprzednie_komb or nastepne_komb:
     rekord = {"Kombinacja": aktualna_kombinacja, "Powtórzenie": aktualne_powtorzenie}
     rekord.update(wartosci)
 
@@ -227,37 +239,23 @@ if submit_button:
         st.session_state.zebrane_dane[index] = rekord
     else:
         st.session_state.zebrane_dane.append(rekord)
-    st.rerun()
 
-# Nawigacja poza formularzem
-col1, col2, col3, col4, col5 = st.columns([1.5, 1.5, 2, 1.5, 1.5])
-with col1:
-    poprzednie_komb_disabled = aktualna_kombinacja <= 1
-    poprzednie_komb = st.button("Poprz. kombinacja", disabled=poprzednie_komb_disabled, key="prev_comb")
-with col2:
-    poprzednie_disabled = aktualne_powtorzenie <= 1
-    poprzednie = st.button("Poprz. powtórzenie", disabled=poprzednie_disabled, key="prev_rep")
-with col4:
-    nastepne_disabled = aktualne_powtorzenie >= liczba_ocen or liczba_ocen == 0
-    nastepne = st.button("Nast. powtórzenie", disabled=nastepne_disabled, key="next_rep")
-with col5:
-    nastepne_komb_disabled = aktualna_kombinacja >= liczba_kombinacji or liczba_kombinacji == 0
-    nastepne_komb = st.button("Nast. kombinacja", disabled=nastepne_komb_disabled, key="next_comb")
-
-if poprzednie_komb and aktualna_kombinacja > 1:
-    st.session_state.kombinacja -= 1
-    st.session_state.powtorzenie = 1
-    st.rerun()
-elif nastepne_komb and aktualna_kombinacja < liczba_kombinacji:
-    st.session_state.kombinacja += 1
-    st.session_state.powtorzenie = 1
-    st.rerun()
-elif poprzednie and aktualne_powtorzenie > 1:
-    st.session_state.powtorzenie -= 1
-    st.rerun()
-elif nastepne and aktualne_powtorzenie < liczba_ocen:
-    st.session_state.powtorzenie += 1
-    st.rerun()
+    if poprzednie_komb and aktualna_kombinacja > 1:
+        st.session_state.kombinacja -= 1
+        st.session_state.powtorzenie = 1
+        st.rerun()
+    elif nastepne_komb and aktualna_kombinacja < liczba_kombinacji:
+        st.session_state.kombinacja += 1
+        st.session_state.powtorzenie = 1
+        st.rerun()
+    elif poprzednie and aktualne_powtorzenie > 1:
+        st.session_state.powtorzenie -= 1
+        st.rerun()
+    elif nastepne and aktualne_powtorzenie < liczba_ocen:
+        st.session_state.powtorzenie += 1
+        st.rerun()
+    else:
+        st.rerun()
 
 # --- Wyświetlanie wyników dla wszystkich powtórzeń w bieżącej kombinacji ---
 st.markdown(f"### Wyniki dla Kombinacji {aktualna_kombinacja}")
