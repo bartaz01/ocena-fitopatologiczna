@@ -35,6 +35,12 @@ st.markdown(
     .selected {
         background-color: #2ecc71 !important;
     }
+    .stButton > button {
+        width: 100%;
+        padding: 10px;
+        margin: 5px 0;
+        font-size: 14px;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -98,42 +104,22 @@ aktualne_powtorzenie = st.session_state.powtorzenie
 # --- MAPKA NAD FORMULARZEM ---
 if liczba_kombinacji > 0 and liczba_ocen > 0:
     st.markdown("### Mapa powtórzeń i kombinacji — kliknij, aby przejść do wybranej oceny")
-
-    grid_html = "<div class='grid-container'>"
+    cols = st.columns(liczba_ocen)
     for k in range(1, liczba_kombinacji + 1):
         for p in range(1, liczba_ocen + 1):
-            selected_class = "selected" if (k == aktualna_kombinacja and p == aktualne_powtorzenie) else ""
-            grid_html += (
-                f"<div class='grid-item {selected_class}' "
-                f"onclick='window.location.href = window.location.pathname + `?kombinacja=${k}&powtorzenie=${p}`'>"
-                f"K{k} - P{p}"
-                "</div>"
-            )
-    grid_html += "</div>"
-
-    st.markdown(grid_html, unsafe_allow_html=True)
+            with cols[p-1]:
+                selected_class = "selected" if (k == aktualna_kombinacja and p == aktualne_powtorzenie) else ""
+                button_key = f"mapka_k{k}_p{p}"
+                if st.button(f"K{k} - P{p}", key=button_key, help=f"Przejdź do Kombinacji {k} - Powtórzenia {p}"):
+                    st.session_state.kombinacja = k
+                    st.session_state.powtorzenie = p
+                    st.rerun()
+                st.markdown(
+                    f"<div class='grid-item {selected_class}' style='margin: 5px;'>{k}-{p}</div>",
+                    unsafe_allow_html=True,
+                )
 else:
     st.info("Mapa nie jest dostępna, gdy liczba kombinacji lub powtórzeń jest 0.")
-
-# --- Odczyt parametrów z URL ---
-params = st.query_params
-if params.get("kombinacja"):
-    try:
-        k = int(params["kombinacja"])
-        if 1 <= k <= max(liczba_kombinacji, 1):
-            st.session_state.kombinacja = k
-            aktualna_kombinacja = k
-    except:
-        pass
-
-if params.get("powtorzenie"):
-    try:
-        p = int(params["powtorzenie"])
-        if 1 <= p <= max(liczba_ocen, 1):
-            st.session_state.powtorzenie = p
-            aktualne_powtorzenie = p
-    except:
-        pass
 
 st.markdown(
     f"<h3 style='color: #2ecc71; text-align: center;'>Wyniki dla Kombinacji {aktualna_kombinacja} – Powtórzenia {aktualne_powtorzenie}</h3>",
@@ -172,21 +158,34 @@ with st.form(key="ocena_form"):
                 f"{cecha}", min_value=0, value=wartosci_start[cecha], step=1, key=f"{cecha}_{aktualna_kombinacja}_{aktualne_powtorzenie}"
             )
 
-    col1, col2, col3, col4, col5 = st.columns([1, 1, 2, 1, 1])
+    st.markdown(
+        """
+        <style>
+        .stButton > button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    col1, col2, col3, col4, col5 = st.columns([1.5, 1.5, 2, 1.5, 1.5])
     with col1:
         poprzednie_komb_disabled = aktualna_kombinacja <= 1
-        poprzednie_komb = st.form_submit_button("Poprzednia kombinacja", disabled=poprzednie_komb_disabled)
+        poprzednie_komb = st.form_submit_button("Poprz. kombinacja", disabled=poprzednie_komb_disabled)
     with col2:
         poprzednie_disabled = aktualne_powtorzenie <= 1
-        poprzednie = st.form_submit_button("Poprzednie powtórzenie", disabled=poprzednie_disabled)
+        poprzednie = st.form_submit_button("Poprz. powtórzenie", disabled=poprzednie_disabled)
     with col3:
         zapisz = st.form_submit_button("Zapisz oceny")
     with col4:
         nastepne_disabled = aktualne_powtorzenie >= liczba_ocen or liczba_ocen == 0
-        nastepne = st.form_submit_button("Następne powtórzenie", disabled=nastepne_disabled)
+        nastepne = st.form_submit_button("Nast. powtórzenie", disabled=nastepne_disabled)
     with col5:
         nastepne_komb_disabled = aktualna_kombinacja >= liczba_kombinacji or liczba_kombinacji == 0
-        nastepne_komb = st.form_submit_button("Następna kombinacja", disabled=nastepne_komb_disabled)
+        nastepne_komb = st.form_submit_button("Nast. kombinacja", disabled=nastepne_komb_disabled)
 
 if zapisz or poprzednie or nastepne or poprzednie_komb or nastepne_komb:
     rekord = {"Kombinacja": aktualna_kombinacja, "Powtórzenie": aktualne_powtorzenie}
