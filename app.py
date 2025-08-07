@@ -47,22 +47,37 @@ st.markdown(
 )
 
 # Inicjalizacja sesji
-for key in ["powtorzenie", "kombinacja", "zebrane_dane"]:
+for key in ["powtorzenie", "kombinacja", "zebrane_dane", "fitopatologiczne_aktywne", "herbologiczne_aktywne", "insektycydowe_aktywne"]:
     if key not in st.session_state:
-        st.session_state[key] = 1 if key != "zebrane_dane" else []
+        st.session_state[key] = 1 if key in ["powtorzenie", "kombinacja"] else [] if key == "zebrane_dane" else True
 
-# Ustawienia liczby powtórzeń i kombinacji — minimalna 0
+# Ustawienia liczby powtórzeń i kombinacji
 liczba_ocen = st.number_input("Liczba powtórzeń oceny (może być 0)", min_value=0, value=3, step=1)
 liczba_kombinacji = st.number_input("Liczba kombinacji (może być 0)", min_value=0, value=2, step=1)
 
-# Listy cech
-fitopatologiczne_input = st.text_input("Choroby fitopatologiczne (np. V, S, Z)", "V, S, Z")
-herbologiczne_input = st.text_input("Oceny herbologiczne (np. H1, H2)", "H1, H2")
-insektycydowe_input = st.text_input("Oceny insektycydowe (np. I1, I2)", "I1, I2")
+# Opcje Tak/Nie dla kategorii
+st.markdown("### Wybierz kategorie do oceny")
+st.session_state.fitopatologiczne_aktywne = st.checkbox("Oceny fitopatologiczne", value=st.session_state.fitopatologiczne_aktywne)
+st.session_state.herbologiczne_aktywne = st.checkbox("Oceny herbologiczne", value=st.session_state.herbologiczne_aktywne)
+st.session_state.insektycydowe_aktywne = st.checkbox("Oceny insektycydowe", value=st.session_state.insektycydowe_aktywne)
 
-fitopatologiczne = [c.strip() for c in fitopatologiczne_input.split(",") if c.strip()]
-herbologiczne = [c.strip() for c in herbologiczne_input.split(",") if c.strip()]
-insektycydowe = [c.strip() for c in insektycydowe_input.split(",") if c.strip()]
+# Pola tekstowe tylko dla aktywnych kategorii
+fitopatologiczne = []
+herbologiczne = []
+insektycydowe = []
+
+if st.session_state.fitopatologiczne_aktywne:
+    fitopatologiczne_input = st.text_input("Choroby fitopatologiczne (np. V, S, Z)", "V, S, Z")
+    fitopatologiczne = [c.strip() for c in fitopatologiczne_input.split(",") if c.strip()]
+
+if st.session_state.herbologiczne_aktywne:
+    herbologiczne_input = st.text_input("Oceny herbologiczne (np. H1, H2)", "H1, H2")
+    herbologiczne = [c.strip() for c in herbologiczne_input.split(",") if c.strip()]
+
+if st.session_state.insektycydowe_aktywne:
+    insektycydowe_input = st.text_input("Oceny insektycydowe (np. I1, I2)", "I1, I2")
+    insektycydowe = [c.strip() for c in insektycydowe_input.split(",") if c.strip()]
+
 wszystkie_cechy = fitopatologiczne + herbologiczne + insektycydowe
 
 # Obsługa sesji i wartości domyślnych
@@ -89,7 +104,7 @@ if liczba_kombinacji > 0 and liczba_ocen > 0:
             selected_class = "selected" if (k == aktualna_kombinacja and p == aktualne_powtorzenie) else ""
             grid_html += (
                 f"<div class='grid-item {selected_class}' "
-                f"onclick='window.dispatchEvent(new CustomEvent(\"selectCell\", {{detail: {{komb: {k}, powt: {p}}}}}))'>"
+                f"onclick='window.location.href = window.location.pathname + `?kombinacja=${k}&powtorzenie=${p}`'>"
                 f"K{k} - P{p}"
                 "</div>"
             )
@@ -97,17 +112,14 @@ if liczba_kombinacji > 0 and liczba_ocen > 0:
 
     st.markdown(grid_html, unsafe_allow_html=True)
 
-    # JS do przeładowania z parametrami w URL (kliknięcie mapki)
+    # JS do obsługi kliknięcia
     st.markdown(
         """
         <script>
-        const gridItems = window.parent.document.querySelectorAll('.grid-item');
-        gridItems.forEach(item => {
-            item.addEventListener('click', (e) => {
-                const komb = parseInt(e.target.textContent.match(/K(\\d+)/)[1]);
-                const powt = parseInt(e.target.textContent.match(/P(\\d+)/)[1]);
-                window.location.href = window.location.pathname + `?kombinacja=${komb}&powtorzenie=${powt}`;
-            });
+        window.addEventListener('selectCell', (event) => {
+            const komb = event.detail.komb;
+            const powt = event.detail.powt;
+            window.location.href = window.location.pathname + `?kombinacja=${komb}&powtorzenie=${powt}`;
         });
         </script>
         """,
@@ -120,7 +132,7 @@ else:
 params = st.query_params
 if "kombinacja" in params:
     try:
-        k = int(params["kombinacja"][0])
+        k = int(params["kombinacja"])
         if 1 <= k <= max(liczba_kombinacji, 1):
             st.session_state.kombinacja = k
             aktualna_kombinacja = k
@@ -129,7 +141,7 @@ if "kombinacja" in params:
 
 if "powtorzenie" in params:
     try:
-        p = int(params["powtorzenie"][0])
+        p = int(params["powtorzenie"])
         if 1 <= p <= max(liczba_ocen, 1):
             st.session_state.powtorzenie = p
             aktualne_powtorzenie = p
@@ -137,7 +149,7 @@ if "powtorzenie" in params:
         pass
 
 st.markdown(
-    f"<h3 style='color: #7f8c8d;'>Kombinacja {aktualna_kombinacja} – Powtórzenie {aktualne_powtorzenie}</h3>",
+    f"<h3 style='color: #2ecc71; text-align: center;'>Wyniki dla Kombinacji {aktualna_kombinacja} – Powtórzenia {aktualne_powtorzenie}</h3>",
     unsafe_allow_html=True,
 )
 
@@ -153,22 +165,25 @@ for cecha in wszystkie_cechy:
     wartosci_start[cecha] = istniejacy_rekord.get(cecha, 0) if istniejacy_rekord else 0
 
 with st.form(key="ocena_form"):
-    st.markdown("#### Oceny fitopatologiczne")
     wartosci = {}
-    for cecha in fitopatologiczne:
-        wartosci[cecha] = st.number_input(
-            f"{cecha}", min_value=0, value=wartosci_start[cecha], step=1, key=f"{cecha}_{aktualna_kombinacja}_{aktualne_powtorzenie}"
-        )
-    st.markdown("#### Oceny herbologiczne")
-    for cecha in herbologiczne:
-        wartosci[cecha] = st.number_input(
-            f"{cecha}", min_value=0, value=wartosci_start[cecha], step=1, key=f"{cecha}_{aktualna_kombinacja}_{aktualne_powtorzenie}"
-        )
-    st.markdown("#### Oceny insektycydowe")
-    for cecha in insektycydowe:
-        wartosci[cecha] = st.number_input(
-            f"{cecha}", min_value=0, value=wartosci_start[cecha], step=1, key=f"{cecha}_{aktualna_kombinacja}_{aktualne_powtorzenie}"
-        )
+    if st.session_state.fitopatologiczne_aktywne:
+        st.markdown("#### Oceny fitopatologiczne")
+        for cecha in fitopatologiczne:
+            wartosci[cecha] = st.number_input(
+                f"{cecha}", min_value=0, value=wartosci_start[cecha], step=1, key=f"{cecha}_{aktualna_kombinacja}_{aktualne_powtorzenie}"
+            )
+    if st.session_state.herbologiczne_aktywne:
+        st.markdown("#### Oceny herbologiczne")
+        for cecha in herbologiczne:
+            wartosci[cecha] = st.number_input(
+                f"{cecha}", min_value=0, value=wartosci_start[cecha], step=1, key=f"{cecha}_{aktualna_kombinacja}_{aktualne_powtorzenie}"
+            )
+    if st.session_state.insektycydowe_aktywne:
+        st.markdown("#### Oceny insektycydowe")
+        for cecha in insektycydowe:
+            wartosci[cecha] = st.number_input(
+                f"{cecha}", min_value=0, value=wartosci_start[cecha], step=1, key=f"{cecha}_{aktualna_kombinacja}_{aktualne_powtorzenie}"
+            )
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col1:
@@ -192,7 +207,7 @@ if zapisz or poprzednie or nastepne:
 
     if poprzednie and aktualne_powtorzenie > 1:
         st.session_state.powtorzenie -= 1
-         st.rerun()
+        st.rerun()
     elif nastepne and aktualne_powtorzenie < liczba_ocen:
         st.session_state.powtorzenie += 1
         st.rerun()
@@ -202,7 +217,7 @@ if zapisz or poprzednie or nastepne:
 # --- Wyświetlanie wyników dla aktualnej kombinacji i powtórzenia ---
 st.markdown("### Aktualne zapisane wyniki dla tej kombinacji i powtórzenia")
 if istniejacy_rekord:
-    pokaz = {k: v for k, v in istniejacy_rekord.items() if k not in ["Kombinacja", "Powtórzenie"]}
+    pokaz = {k: v for k, v in istniejacy_rekord.items() if k in wszystkie_cechy or k in ["Kombinacja", "Powtórzenie"]}
     df_wyniki = pd.DataFrame(pokaz.items(), columns=["Cecha", "Wartość"])
     st.table(df_wyniki)
 else:
@@ -215,7 +230,8 @@ if st.session_state.zebrane_dane:
     df_all = pd.DataFrame(st.session_state.zebrane_dane)
     df_all.fillna(0, inplace=True)
     for cecha in wszystkie_cechy:
-        df_all[cecha] = pd.to_numeric(df_all[cecha], errors="coerce").fillna(0)
+        if cecha in df_all.columns:
+            df_all[cecha] = pd.to_numeric(df_all[cecha], errors="coerce").fillna(0)
     srednie = df_all[wszystkie_cechy].mean().round(2)
     srednie_df = srednie.reset_index()
     srednie_df.columns = ["Cecha", "Średnia wartość"]
@@ -229,5 +245,12 @@ st.write("---")
 # Eksport danych
 if st.button("Eksportuj wszystko do Excela"):
     df_export = pd.DataFrame(st.session_state.zebrane_dane)
-    df_export.to_excel("oceny_krokowe.xlsx", index=False)
-    st.success("Zapisano jako 'oceny_krokowe.xlsx'")
+    buffer = io.BytesIO()
+    df_export.to_excel(buffer, index=False)
+    st.download_button(
+        label="Pobierz plik Excel",
+        data=buffer,
+        file_name="oceny_krokowe.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    st.success("Plik gotowy do pobrania!")
