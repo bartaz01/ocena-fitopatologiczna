@@ -195,7 +195,7 @@ if zapisz or poprzednie or nastepne:
         st.rerun()
     elif nastepne and aktualne_powtorzenie < liczba_ocen:
         st.session_state.powtorzenie += 1
-        st.rerun()
+        st.experimental_rerun()
     else:
         st.rerun()
 
