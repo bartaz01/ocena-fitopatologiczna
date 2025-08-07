@@ -10,16 +10,40 @@ st.markdown(
         background-color: #f0f0f0;
         color: #333333;
     }
+    .grid-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+        gap: 8px;
+        margin-top: 10px;
+        margin-bottom: 20px;
+    }
+    .grid-item {
+        background-color: #3498db;
+        color: white;
+        padding: 12px;
+        text-align: center;
+        border-radius: 5px;
+        cursor: pointer;
+        user-select: none;
+        font-weight: bold;
+        transition: background-color 0.3s ease;
+    }
+    .grid-item:hover {
+        background-color: #2980b9;
+    }
+    .selected {
+        background-color: #2ecc71 !important;
+    }
     </style>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
 st.markdown(
     """
     <h1 style='text-align: center; color: #2c3e50;'>Ocena fitopatologiczna – tryb krokowy</h1>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
 # Inicjalizacja sesji
@@ -27,20 +51,31 @@ for key in ["powtorzenie", "kombinacja", "zebrane_dane"]:
     if key not in st.session_state:
         st.session_state[key] = 1 if key != "zebrane_dane" else []
 
-# Wprowadź listy chorób / cech dla 3 typów ocen:
+# Ustawienia liczby powtórzeń i kombinacji — minimalna 0, co oznacza brak tej warstwy
+liczba_ocen = st.number_input("Liczba powtórzeń oceny (może być 0)", min_value=0, value=3, step=1)
+liczba_kombinacji = st.number_input("Liczba kombinacji (może być 0)", min_value=0, value=2, step=1)
+
+# Listy cech
 fitopatologiczne_input = st.text_input("Choroby fitopatologiczne (np. V, S, Z)", "V, S, Z")
 herbologiczne_input = st.text_input("Oceny herbologiczne (np. H1, H2)", "H1, H2")
 insektycydowe_input = st.text_input("Oceny insektycydowe (np. I1, I2)", "I1, I2")
 
-liczba_ocen = st.number_input("Liczba powtórzeń oceny", min_value=1, value=3, step=1)
-liczba_kombinacji = st.number_input("Liczba kombinacji", min_value=1, value=2, step=1)
-
-# Lista wszystkich cech do oceny
 fitopatologiczne = [c.strip() for c in fitopatologiczne_input.split(",") if c.strip()]
 herbologiczne = [c.strip() for c in herbologiczne_input.split(",") if c.strip()]
 insektycydowe = [c.strip() for c in insektycydowe_input.split(",") if c.strip()]
-
 wszystkie_cechy = fitopatologiczne + herbologiczne + insektycydowe
+
+# --- Obsługa nawigacji i zakresów ---
+# Ustaw domyślne wartości sesji na 1 jeśli 0 to ustawiamy na 1 aby uniknąć błędów indexowych
+if liczba_kombinacji == 0:
+    st.session_state.kombinacja = 1
+else:
+    st.session_state.kombinacja = min(max(st.session_state.kombinacja, 1), liczba_kombinacji)
+
+if liczba_ocen == 0:
+    st.session_state.powtorzenie = 1
+else:
+    st.session_state.powtorzenie = min(max(st.session_state.powtorzenie, 1), liczba_ocen)
 
 aktualna_kombinacja = st.session_state.kombinacja
 aktualne_powtorzenie = st.session_state.powtorzenie
@@ -50,7 +85,81 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Znajdź istniejący rekord dla aktualnej kombinacji i powtórzenia
+# --- Mapka interaktywna ---
+if liczba_kombinacji > 0 and liczba_ocen > 0:
+    st.markdown("### Mapa powtórzeń i kombinacji — kliknij, aby przejść do wybranej oceny")
+
+    # Generujemy kwadraty - grid  z klikalnymi przyciskami
+    cols = st.columns(liczba_kombinacji)
+
+    # Mapa działa przez generowanie przycisków z callbackiem zmieniającym sesję
+
+    # Inna metoda: użyj jednej dużej siatki:
+    # Do grid kontenera w HTML dodałem klasę, ale Streamlit nie pozwala na łatwe mapowanie, więc robię wiersze ręcznie:
+
+    # Tworzymy grid kwadratów:
+    n_cols = min(8, liczba_kombinacji)  # max 8 kolumn, reszta w wierszach
+    rows = (liczba_kombinacji + n_cols - 1) // n_cols
+
+    grid_html = "<div class='grid-container'>"
+    for k in range(1, liczba_kombinacji + 1):
+        for p in range(1, liczba_ocen + 1):
+            selected_class = ""
+            if k == aktualna_kombinacja and p == aktualne_powtorzenie:
+                selected_class = "selected"
+            grid_html += (
+                f"<div class='grid-item {selected_class}' "
+                f"onclick='window.dispatchEvent(new CustomEvent(\"selectCell\", {{detail: {{komb: {k}, powt: {p}}}}}))'>"
+                f"K{k} - P{p}"
+                "</div>"
+            )
+    grid_html += "</div>"
+
+    st.markdown(grid_html, unsafe_allow_html=True)
+
+    # JavaScript do przesłania do Streamlit (niestety bez komponentów JS to tylko "hack")
+    st.markdown(
+        """
+        <script>
+        const gridItems = window.parent.document.querySelectorAll('.grid-item');
+        gridItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                const komb = parseInt(e.target.textContent.match(/K(\\d+)/)[1]);
+                const powt = parseInt(e.target.textContent.match(/P(\\d+)/)[1]);
+                // przekierowanie przez Streamlit API na url z parametrami
+                window.location.href = window.location.pathname + `?kombinacja=${komb}&powtorzenie=${powt}`;
+            });
+        });
+        </script>
+        """,
+        unsafe_allow_html=True,
+    )
+else:
+    st.info("Mapa nie jest dostępna gdy liczba kombinacji lub powtórzeń jest 0.")
+
+# --- Odczyt z query params, jeśli jest ---
+
+params = st.experimental_get_query_params()
+if "kombinacja" in params:
+    try:
+        k = int(params["kombinacja"][0])
+        if 1 <= k <= max(liczba_kombinacji, 1):
+            st.session_state.kombinacja = k
+            aktualna_kombinacja = k
+    except:
+        pass
+
+if "powtorzenie" in params:
+    try:
+        p = int(params["powtorzenie"][0])
+        if 1 <= p <= max(liczba_ocen, 1):
+            st.session_state.powtorzenie = p
+            aktualne_powtorzenie = p
+    except:
+        pass
+
+# --- Formularz z nawigacją zamiast zapisu ---
+# Znajdź istniejący rekord
 istniejacy_rekord = None
 for rekord in st.session_state.zebrane_dane:
     if rekord.get("Kombinacja") == aktualna_kombinacja and rekord.get("Powtórzenie") == aktualne_powtorzenie:
@@ -79,9 +188,18 @@ with st.form(key="ocena_form"):
             f"{cecha}", min_value=0, value=wartosci_start[cecha], step=1, key=f"{cecha}_{aktualna_kombinacja}_{aktualne_powtorzenie}"
         )
 
-    submitted = st.form_submit_button("Zapisz oceny")
+    # Przyciski nawigacyjne zamiast zapisz
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col1:
+        poprzednie_disabled = aktualne_powtorzenie <= 1
+        poprzednie = st.form_submit_button("Poprzednie powtórzenie", disabled=poprzednie_disabled)
+    with col2:
+        zapisz = st.form_submit_button("Zapisz oceny")
+    with col3:
+        nastepne_disabled = aktualne_powtorzenie >= liczba_ocen or liczba_ocen == 0
+        nastepne = st.form_submit_button("Następne powtórzenie", disabled=nastepne_disabled)
 
-if submitted:
+if zapisz or poprzednie or nastepne:
     rekord = {"Kombinacja": aktualna_kombinacja, "Powtórzenie": aktualne_powtorzenie}
     rekord.update(wartosci)
 
@@ -90,6 +208,16 @@ if submitted:
         st.session_state.zebrane_dane[index] = rekord
     else:
         st.session_state.zebrane_dane.append(rekord)
+
+    if poprzednie and aktualne_powtorzenie > 1:
+        st.session_state.powtorzenie -= 1
+        st.experimental_rerun()
+    elif nastepne and aktualne_powtorzenie < liczba_ocen:
+        st.session_state.powtorzenie += 1
+        st.experimental_rerun()
+    else:
+        # Po prostu zapis bez zmiany powtórzenia
+        st.experimental_rerun()
 
 # Wyświetlanie zapisanych wyników dla aktualnej kombinacji i powtórzenia
 st.markdown("### Aktualne zapisane wyniki dla tej kombinacji i powtórzenia")
@@ -102,18 +230,15 @@ else:
 
 st.write("---")
 
-# Obliczanie średnich dla każdej cechy na podstawie wszystkich zebranych danych
+# Średnie z całego zbioru
 if st.session_state.zebrane_dane:
     df_all = pd.DataFrame(st.session_state.zebrane_dane)
-    # Ustawiamy typy liczbowe (może być problem z pustymi, więc fillna)
     df_all.fillna(0, inplace=True)
     for cecha in wszystkie_cechy:
-        df_all[cecha] = pd.to_numeric(df_all[cecha], errors='coerce').fillna(0)
-
+        df_all[cecha] = pd.to_numeric(df_all[cecha], errors="coerce").fillna(0)
     srednie = df_all[wszystkie_cechy].mean().round(2)
     srednie_df = srednie.reset_index()
     srednie_df.columns = ["Cecha", "Średnia wartość"]
-
     st.markdown("### Średnie wartości podsumowane dla wszystkich kombinacji i powtórzeń")
     st.table(srednie_df)
 else:
@@ -121,29 +246,7 @@ else:
 
 st.write("---")
 
-# Nawigacja pomiędzy powtórzeniami i kombinacjami
-if aktualne_powtorzenie < liczba_ocen:
-    if st.button("Przejdź do następnego powtórzenia"):
-        st.session_state.powtorzenie += 1
-        st.experimental_rerun()
-else:
-    st.session_state.powtorzenie = 1
-    if aktualna_kombinacja < liczba_kombinacji:
-        if st.button("Przejdź do następnej kombinacji"):
-            st.session_state.kombinacja += 1
-            st.experimental_rerun()
-        nowa = st.number_input(
-            "Wybierz nową kombinację:", min_value=1, max_value=liczba_kombinacji, step=1, key="nowa_komb"
-        )
-        if st.button("Przejdź do wybranej"):
-            st.session_state.kombinacja = nowa
-            st.experimental_rerun()
-    else:
-        st.success("Zakończono wszystkie kombinacje")
-
-st.write("---")
-
-# Eksport danych do Excela
+# Eksport danych
 if st.button("Eksportuj wszystko do Excela"):
     df_export = pd.DataFrame(st.session_state.zebrane_dane)
     df_export.to_excel("oceny_krokowe.xlsx", index=False)
