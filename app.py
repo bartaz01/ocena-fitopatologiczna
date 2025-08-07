@@ -38,11 +38,6 @@ st.markdown(
         width: 100%;
         overflow-x: auto;
     }
-    .stNumberInput {
-        display: inline-block;
-        width: 100px;
-        margin-right: 10px;
-    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -154,12 +149,12 @@ with st.form(key="ocena_form"):
         for cecha in fitopatologiczne:
             st.markdown(f"**{cecha}**")
             wartosci[cecha] = []
-            cols = st.columns(min(liczba_wynikow, 5))  # Maksymalnie 5 kolumn dla czytelności
+            cols = st.columns(liczba_wynikow)
             for i in range(liczba_wynikow):
-                with cols[i % 5]:
+                with cols[i]:
                     klucz = f"{cecha}_{aktualna_kombinacja}_{aktualne_powtorzenie}_{i}"
                     wartosc = st.number_input(
-                        f"Wynik {i+1}",
+                        f"{i+1}",
                         min_value=0,
                         value=istniejacy_rekord.get(cecha, [0] * liczba_wynikow)[i] if istniejacy_rekord else 0,
                         step=1,
@@ -172,12 +167,12 @@ with st.form(key="ocena_form"):
         for cecha in herbologiczne:
             st.markdown(f"**{cecha}**")
             wartosci[cecha] = []
-            cols = st.columns(min(liczba_wynikow, 5))
+            cols = st.columns(liczba_wynikow)
             for i in range(liczba_wynikow):
-                with cols[i % 5]:
+                with cols[i]:
                     klucz = f"{cecha}_{aktualna_kombinacja}_{aktualne_powtorzenie}_{i}"
                     wartosc = st.number_input(
-                        f"Wynik {i+1}",
+                        f"{i+1}",
                         min_value=0,
                         value=istniejacy_rekord.get(cecha, [0] * liczba_wynikow)[i] if istniejacy_rekord else 0,
                         step=1,
@@ -190,12 +185,12 @@ with st.form(key="ocena_form"):
         for cecha in insektycydowe:
             st.markdown(f"**{cecha}**")
             wartosci[cecha] = []
-            cols = st.columns(min(liczba_wynikow, 5))
+            cols = st.columns(liczba_wynikow)
             for i in range(liczba_wynikow):
-                with cols[i % 5]:
+                with cols[i]:
                     klucz = f"{cecha}_{aktualna_kombinacja}_{aktualne_powtorzenie}_{i}"
                     wartosc = st.number_input(
-                        f"Wynik {i+1}",
+                        f"{i+1}",
                         min_value=0,
                         value=istniejacy_rekord.get(cecha, [0] * liczba_wynikow)[i] if istniejacy_rekord else 0,
                         step=1,
@@ -273,7 +268,7 @@ if liczba_ocen > 0 and wszystkie_cechy:
         wiersz = {"Kombinacja-Powtórzenie": f"K{aktualna_kombinacja}-P{p}"}
         for cecha in wszystkie_cechy:
             for i in range(liczba_wynikow):
-                wiersz[f"{cecha}_Wynik_{i+1}"] = rekord.get(cecha, [0] * liczba_wynikow)[i] if rekord else 0
+                wiersz[f"{cecha}_{i+1}"] = rekord.get(cecha, [0] * liczba_wynikow)[i] if rekord else 0
         dane_tabela.append(wiersz)
     df_wyniki = pd.DataFrame(dane_tabela)
     st.dataframe(df_wyniki, use_container_width=True)  # Użycie dataframe dla suwaka
@@ -309,7 +304,7 @@ if st.button("Eksportuj wszystko do Excela"):
         wiersz = {"Kombinacja": rekord["Kombinacja"], "Powtórzenie": rekord["Powtórzenie"]}
         for cecha in wszystkie_cechy:
             for i in range(liczba_wynikow):
-                wiersz[f"{cecha}_Wynik_{i+1}"] = rekord.get(cecha, [0] * liczba_wynikow)[i]
+                wiersz[f"{cecha}_{i+1}"] = rekord.get(cecha, [0] * liczba_wynikow)[i]
         df_export.append(wiersz)
     df_export = pd.DataFrame(df_export)
     buffer = io.BytesIO()
