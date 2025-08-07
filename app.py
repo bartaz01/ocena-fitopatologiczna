@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import io
 
-st.set_page_config(page_title="Ocena Fitopatologiczna", page_icon="ikona.jpg")
+st.set_page_config(page_title="Dziennik ocen", page_icon="ikona.jpg")
 
 st.markdown(
     """
@@ -11,29 +11,28 @@ st.markdown(
         background-color: #f0f0f0;
         color: #333333;
     }
-    .grid-item {
-        background-color: #3498db;
-        color: white;
-        padding: 8px;
-        text-align: center;
-        border-radius: 5px;
-        cursor: pointer;
-        user-select: none;
-        font-weight: bold;
-        font-size: 14px;
-        transition: background-color 0.3s ease;
-    }
-    .grid-item:hover {
-        background-color: #2980b9;
-    }
-    .selected {
-        background-color: #2ecc71 !important;
-    }
     .stButton > button {
         width: 100%;
         padding: 10px;
         margin: 5px 0;
         font-size: 14px;
+        border-radius: 5px;
+    }
+    .stButton > button[kind="secondary"] {
+        background-color: #3498db;
+        color: white;
+        border: none;
+    }
+    .stButton > button[kind="secondary"]:hover {
+        background-color: #2980b9;
+    }
+    .stButton > button[kind="primary"] {
+        background-color: #2ecc71;
+        color: white;
+        border: none;
+    }
+    .stButton > button[kind="primary"]:hover {
+        background-color: #27ae60;
     }
     </style>
     """,
@@ -42,7 +41,7 @@ st.markdown(
 
 st.markdown(
     """
-    <h1 style='text-align: center; color: #2c3e50;'>Ocena fitopatologiczna – tryb krokowy</h1>
+    <h1 style='text-align: center; color: #2c3e50;'>Dziennik ocen</h1>
     """,
     unsafe_allow_html=True,
 )
@@ -68,16 +67,22 @@ herbologiczne = []
 insektycydowe = []
 
 if st.session_state.fitopatologiczne_aktywne:
-    fitopatologiczne_input = st.text_input("Choroby fitopatologiczne (np. Sucha, Werti, Zgnilizna)", "Sucha, Werti, Zgnilizna")
+    fitopatologiczne_input = st.text_input("Oceny fitopatologiczne (np. F1, F2)", "F1, F2")
     fitopatologiczne = [c.strip() for c in fitopatologiczne_input.split(",") if c.strip()]
+else:
+    fitopatologiczne = []
 
 if st.session_state.herbologiczne_aktywne:
     herbologiczne_input = st.text_input("Oceny herbologiczne (np. H1, H2)", "H1, H2")
     herbologiczne = [c.strip() for c in herbologiczne_input.split(",") if c.strip()]
+else:
+    herbologiczne = []
 
 if st.session_state.insektycydowe_aktywne:
     insektycydowe_input = st.text_input("Oceny insektycydowe (np. I1, I2)", "I1, I2")
     insektycydowe = [c.strip() for c in insektycydowe_input.split(",") if c.strip()]
+else:
+    insektycydowe = []
 
 wszystkie_cechy = fitopatologiczne + herbologiczne + insektycydowe
 
@@ -98,19 +103,22 @@ aktualne_powtorzenie = st.session_state.powtorzenie
 # --- MAPKA NAD FORMULARZEM ---
 if liczba_kombinacji > 0 and liczba_ocen > 0:
     st.markdown("### Mapa powtórzeń i kombinacji — kliknij, aby przejść do wybranej oceny")
-    cols = st.columns(liczba_ocen)
+    cols = st.columns(liczba_ocen, gap="small")
     for k in range(1, liczba_kombinacji + 1):
         for p in range(1, liczba_ocen + 1):
             with cols[p-1]:
-                selected_class = "selected" if (k == aktualna_kombinacja and p == aktualne_powtorzenie) else ""
+                selected = (k == aktualna_kombinacja and p == aktualne_powtorzenie)
                 button_key = f"mapka_k{k}_p{p}"
-                if st.button(f"K{k}-P{p}", key=button_key, help=f"Przejdź do Kombinacji {k} - Powtórzenia {p}"):
-                    st.session_state.kombinacja = k
-                    st.session_state.powtorzenie = p
-                    st.rerun()
-                st.markdown(
-                    f"<div class='grid-item {selected_class}' style='margin: 2px; padding: 8px; font-size: 14px;'>{k}-{p}</div>",
-                    unsafe_allow_html=True,
+                st.button(
+                    f"K{k}-P{p}",
+                    key=button_key,
+                    help=f"Przejdź do Kombinacji {k} - Powtórzenia {p}",
+                    on_click=lambda k=k, p=p: (setattr(st.session_state, "kombinacja", k), setattr(st.session_state, "powtorzenie", p)),
+                    args=(),
+                    kwargs={},
+                    disabled=False,
+                    use_container_width=True,
+                    type="secondary" if not selected else "primary",
                 )
 else:
     st.info("Mapa nie jest dostępna, gdy liczba kombinacji lub powtórzeń jest 0.")
@@ -208,7 +216,7 @@ if zapisz or poprzednie or nastepne or poprzednie_komb or nastepne_komb:
 
 # --- Wyświetlanie wyników dla wszystkich powtórzeń w bieżącej kombinacji ---
 st.markdown(f"### Wyniki dla Kombinacji {aktualna_kombinacja}")
-if liczba_ocen > 0:
+if liczba_ocen > 0 and wszystkie_cechy:
     dane_tabela = []
     for p in range(1, liczba_ocen + 1):
         rekord = None
@@ -223,12 +231,12 @@ if liczba_ocen > 0:
     df_wyniki = pd.DataFrame(dane_tabela)
     st.table(df_wyniki)
 else:
-    st.info("Brak zapisanych wyników dla tej kombinacji.")
+    st.info("Brak zapisanych wyników lub aktywnych cech dla tej kombinacji.")
 
-st.write("---")
+st.divider()
 
 # --- Średnie z całego zbioru ---
-if st.session_state.zebrane_dane:
+if st.session_state.zebrane_dane and wszystkie_cechy:
     df_all = pd.DataFrame(st.session_state.zebrane_dane)
     df_all.fillna(0, inplace=True)
     for cecha in wszystkie_cechy:
@@ -240,9 +248,9 @@ if st.session_state.zebrane_dane:
     st.markdown("### Średnie wartości podsumowane dla wszystkich kombinacji i powtórzeń")
     st.table(srednie_df)
 else:
-    st.info("Brak danych do wyliczenia średnich.")
+    st.info("Brak danych lub aktywnych cech do wyliczenia średnich.")
 
-st.write("---")
+st.divider()
 
 # Eksport danych
 if st.button("Eksportuj wszystko do Excela"):
