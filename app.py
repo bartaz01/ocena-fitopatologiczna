@@ -11,22 +11,16 @@ st.markdown(
         background-color: #f0f0f0;
         color: #333333;
     }
-    .grid-container {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-        gap: 8px;
-        margin-top: 10px;
-        margin-bottom: 20px;
-    }
     .grid-item {
         background-color: #3498db;
         color: white;
-        padding: 12px;
+        padding: 6px;
         text-align: center;
         border-radius: 5px;
         cursor: pointer;
         user-select: none;
         font-weight: bold;
+        font-size: 12px;
         transition: background-color 0.3s ease;
     }
     .grid-item:hover {
@@ -110,12 +104,12 @@ if liczba_kombinacji > 0 and liczba_ocen > 0:
             with cols[p-1]:
                 selected_class = "selected" if (k == aktualna_kombinacja and p == aktualne_powtorzenie) else ""
                 button_key = f"mapka_k{k}_p{p}"
-                if st.button(f"K{k} - P{p}", key=button_key, help=f"Przejdź do Kombinacji {k} - Powtórzenia {p}"):
+                if st.button(f"K{k}-P{p}", key=button_key, help=f"Przejdź do Kombinacji {k} - Powtórzenia {p}"):
                     st.session_state.kombinacja = k
                     st.session_state.powtorzenie = p
                     st.rerun()
                 st.markdown(
-                    f"<div class='grid-item {selected_class}' style='margin: 5px;'>{k}-{p}</div>",
+                    f"<div class='grid-item {selected_class}' style='margin: 2px; padding: 6px; font-size: 12px;'>{k}-{p}</div>",
                     unsafe_allow_html=True,
                 )
 else:
@@ -133,9 +127,7 @@ for rekord in st.session_state.zebrane_dane:
         istniejacy_rekord = rekord
         break
 
-wartosci_start = {}
-for cecha in wszystkie_cechy:
-    wartosci_start[cecha] = istniejacy_rekord.get(cecha, 0) if istniejacy_rekord else 0
+wartosci_start = {cecha: 0 for cecha in wszystkie_cechy}  # Wszystkie wartości początkowe na 0
 
 with st.form(key="ocena_form"):
     wartosci = {}
@@ -217,19 +209,42 @@ if zapisz or poprzednie or nastepne or poprzednie_komb or nastepne_komb:
 # --- Wyświetlanie wyników dla wszystkich powtórzeń w bieżącej kombinacji ---
 st.markdown(f"### Wyniki dla Kombinacji {aktualna_kombinacja}")
 if st.session_state.zebrane_dane:
-    for p in range(1, liczba_ocen + 1):
-        rekord = None
-        for r in st.session_state.zebrane_dane:
-            if r.get("Kombinacja") == aktualna_kombinacja and r.get("Powtórzenie") == p:
-                rekord = r
-                break
-        if rekord:
-            st.markdown(f"#### Powtórzenie {p}")
-            pokaz = {k: v for k, v in rekord.items() if k in wszystkie_cechy or k in ["Kombinacja", "Powtórzenie"]}
-            df_wyniki = pd.DataFrame(pokaz.items(), columns=["Cecha", "Wartość"])
-            st.table(df_wyniki)
-        else:
-            st.info(f"Brak zapisanych wyników dla Powtórzenia {p} w Kombinacji {aktualna_kombinacja}.")
+    if liczba_kombinacji == 1:
+        # Jedna tabela dla wszystkich powtórzeń
+        dane_tabela = []
+        for p in range(1, liczba_ocen + 1):
+            rekord = None
+            for r in st.session_state.zebrane_dane:
+                if r.get("Kombinacja") == aktualna_kombinacja and r.get("Powtórzenie") == p:
+                    rekord = r
+                    break
+            if rekord:
+                wiersz = {"Powtórzenie": p}
+                for cecha in wszystkie_cechy:
+                    wiersz[cecha] = rekord.get(cecha, 0)
+                dane_tabela.append(wiersz)
+            else:
+                wiersz = {"Powtórzenie": p}
+                for cecha in wszystkie_cechy:
+                    wiersz[cecha] = 0
+                dane_tabela.append(wiersz)
+        df_wyniki = pd.DataFrame(dane_tabela)
+        st.table(df_wyniki)
+    else:
+        # Oddzielne tabelki dla każdego powtórzenia
+        for p in range(1, liczba_ocen + 1):
+            rekord = None
+            for r in st.session_state.zebrane_dane:
+                if r.get("Kombinacja") == aktualna_kombinacja and r.get("Powtórzenie") == p:
+                    rekord = r
+                    break
+            if rekord:
+                st.markdown(f"#### Powtórzenie {p}")
+                pokaz = {k: v for k, v in rekord.items() if k in wszystkie_cechy or k in ["Kombinacja", "Powtórzenie"]}
+                df_wyniki = pd.DataFrame(pokaz.items(), columns=["Cecha", "Wartość"])
+                st.table(df_wyniki)
+            else:
+                st.info(f"Brak zapisanych wyników dla Powtórzenia {p} w Kombinacji {aktualna_kombinacja}.")
 else:
     st.info("Brak zapisanych wyników dla tej kombinacji.")
 
