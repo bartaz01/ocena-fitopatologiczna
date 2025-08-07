@@ -134,7 +134,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# --- Formularz (przywrócenie komórek z wielokrotnymi wynikami) ---
+# --- Formularz (z komórkami i submit button) ---
 istniejacy_rekord = None
 for rekord in st.session_state.zebrane_dane:
     if rekord.get("Kombinacja") == aktualna_kombinacja and rekord.get("Powtórzenie") == aktualne_powtorzenie:
@@ -157,7 +157,7 @@ with st.form(key="ocena_form"):
                     wartosc = st.number_input(
                         f"{i+1}",
                         min_value=0,
-                        value=istniejacy_rekord.get(cecha, [0] * liczba_wynikow)[i] if istniejacy_rekord else 0,
+                        value=istniejacy_rekord.get(cecha, [0] * liczba_wynikow)[i] if istniejacy_rekord and cecha in istniejacy_rekord else 0,
                         step=1,
                         key=klucz,
                         format="%d"
@@ -175,7 +175,7 @@ with st.form(key="ocena_form"):
                     wartosc = st.number_input(
                         f"{i+1}",
                         min_value=0,
-                        value=istniejacy_rekord.get(cecha, [0] * liczba_wynikow)[i] if istniejacy_rekord else 0,
+                        value=istniejacy_rekord.get(cecha, [0] * liczba_wynikow)[i] if istniejacy_rekord and cecha in istniejacy_rekord else 0,
                         step=1,
                         key=klucz,
                         format="%d"
@@ -193,12 +193,15 @@ with st.form(key="ocena_form"):
                     wartosc = st.number_input(
                         f"{i+1}",
                         min_value=0,
-                        value=istniejacy_rekord.get(cecha, [0] * liczba_wynikow)[i] if istniejacy_rekord else 0,
+                        value=istniejacy_rekord.get(cecha, [0] * liczba_wynikow)[i] if istniejacy_rekord and cecha in istniejacy_rekord else 0,
                         step=1,
                         key=klucz,
                         format="%d"
                     )
                     wartosci[cecha].append(wartosc)
+
+    # Dodanie przycisku submit
+    st.form_submit_button("Zapisz oceny")
 
     st.markdown(
         """
@@ -220,8 +223,6 @@ with st.form(key="ocena_form"):
     with col2:
         poprzednie_disabled = aktualne_powtorzenie <= 1
         poprzednie = st.form_submit_button("Poprz. powtórzenie", disabled=poprzednie_disabled)
-    with col3:
-        zapisz = st.form_submit_button("Zapisz oceny")
     with col4:
         nastepne_disabled = aktualne_powtorzenie >= liczba_ocen or liczba_ocen == 0
         nastepne = st.form_submit_button("Nast. powtórzenie", disabled=nastepne_disabled)
@@ -265,9 +266,9 @@ if liczba_ocen > 0 and wszystkie_cechy:
             wiersz = {"Kombinacja": f"K{k}", "Cecha": cecha}
             for p in range(1, liczba_ocen + 1):
                 rekord = next((r for r in st.session_state.zebrane_dane if r.get("Kombinacja") == k and r.get("Powtórzenie") == p), None)
-                wartosc = rekord.get(cecha, [0] * liczba_wynikow)[0] if rekord else [0] * liczba_wynikow  # Pobieranie pierwszej wartości listy
+                wartosc = rekord.get(cecha, [0] * liczba_wynikow) if rekord else [0] * liczba_wynikow
                 for i in range(liczba_wynikow):
-                    if i == 0:  # Tylko dla pierwszego wyniku dodajemy wiersz
+                    if i == 0:
                         wiersz[f"P{p}"] = wartosc[i]
                     else:
                         dane_tabela.append({"Kombinacja": f"K{k}", "Cecha": cecha, f"P{p}": wartosc[i]})
