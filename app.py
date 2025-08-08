@@ -264,29 +264,42 @@ st.markdown(f"### Wyniki dla Kombinacji {aktualna_kombinacja}")
 if liczba_ocen > 0 and wszystkie_cechy:
     dane_tabela = []
     for k in range(1, liczba_kombinacji + 1):
-        for cecha in wszystkie_cechy:
-            for i in range(liczba_wynikow):
-                wiersz = {"Kombinacja": f"K{k}" if i == 0 else "", "Cecha": cecha if i == 0 else ""}
+        for i in range(liczba_wynikow):
+            wiersz = {"Kombinacja": f"K{k}" if i == 0 else ""}
+            for cecha_idx, cecha in enumerate(wszystkie_cechy):
                 for p in range(1, liczba_ocen + 1):
+                    if i == 0 and cecha_idx == 0:  # Tylko dla pierwszego wiersza i pierwszej cechy
+                        wiersz[f"P{p}"] = f"P{p}" if cecha_idx == 0 else ""
+                    else:
+                        wiersz[f"P{p}"] = ""
                     rekord = next((r for r in st.session_state.zebrane_dane if r.get("Kombinacja") == k and r.get("Powtórzenie") == p), None)
                     wartosci = rekord.get(cecha, [0] * liczba_wynikow) if rekord else [0] * liczba_wynikow
-                    wiersz[f"P{p}"] = wartosci[i]
-                dane_tabela.append(wiersz)
+                    if cecha_idx == 0 and i == 0:  # Nagłówki cech tylko w pierwszym wierszu
+                        wiersz[cecha] = cecha
+                    elif i == 0:
+                        wiersz[cecha] = cecha
+                    else:
+                        wiersz[cecha] = ""
+                    wiersz[f"{cecha}_wynik_{i+1}"] = wartosci[i]
+            dane_tabela.append(wiersz)
 
     if dane_tabela:
         df_wyniki = pd.DataFrame(dane_tabela)
         # Grupowanie i wypełnienie brakujących wartości
         df_wyniki = df_wyniki.fillna("")
-        # Scalanie komórek dla Kombinacji i Cech
-        styled_df = df_wyniki.style.set_properties(**{'text-align': 'center'}).set_table_styles(
+        # Stylizacja tabeli do symulacji scalania
+        styled_df = df_wyniki.style.set_properties(**{'text-align': 'center', 'border': '1px solid black'}).set_table_styles(
             [
-                {'selector': 'th', 'props': [('text-align', 'center')]},
+                {'selector': 'th', 'props': [('text-align', 'center'), ('border', '1px solid black')]},
                 {'selector': 'td', 'props': [('border', '1px solid black')]},
             ]
         ).apply(
             lambda x: ['background-color: #f0f0f0' if x.name == 0 and pd.notna(x['Kombinacja']) else '' for i in x],
             axis=1
-        ).set_properties(subset=pd.IndexSlice[:, ['Kombinacja', 'Cecha']], **{'border-left': '2px solid black'})
+        ).apply(
+            lambda x: ['background-color: #d3d3d3' if x.name == 0 and any(col.startswith('P') for col in x.index) else '' for i in x],
+            axis=1
+        ).set_properties(subset=pd.IndexSlice[:, ['Kombinacja']], **{'border-right': '2px solid black', 'vertical-align': 'middle'})
         st.table(styled_df)
     else:
         st.info("Brak zapisanych wyników dla tej kombinacji.")
