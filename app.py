@@ -259,19 +259,26 @@ elif nastepne and aktualne_powtorzenie < liczba_ocen:
     st.session_state.powtorzenie += 1
     st.rerun()
 
-# --- Wybór kombinacji suwakiem ---
-aktualna_kombinacja = st.slider("Wybierz kombinację", 1, liczba_kombinacji, 1)
+# --- Inicjalizacja sesji dla aktualnej kombinacji ---
+if "aktualna_kombinacja" not in st.session_state:
+    st.session_state["aktualna_kombinacja"] = 1
 
-# --- Budowa kolumn: Powtórzenie i Cechy ---
+# --- Budowa kolumn: Kombinacja, Powtórzenie i Cechy ---
 kolumny = ["Kombinacja", "Powtórzenie"] + wszystkie_cechy  # Podstawowe kolumny
 
 # --- Wiersze z wynikami ---
 dane_tabela = []
-# Wiersz nagłówkowy
-naglowek = {"Kombinacja": f"K{aktualna_kombinacja}", "Powtórzenie": "P1"}  # Scalanie Powtórzenia
+# Wiersz nagłówkowy z suwakiem w Kombinacji
+naglowek = {
+    "Kombinacja": st.slider("Wybierz kombinację", 1, liczba_kombinacji, st.session_state["aktualna_kombinacja"], key=f"slider_k{aktualna_kombinacja}",
+                            on_change=lambda: st.session_state.update({"aktualna_kombinacja": st.session_state[f"slider_k{aktualna_kombinacja}"]}, st.rerun())),
+    "Powtórzenie": "P1"  # Scalanie Powtórzenia
+}
 for cecha in wszystkie_cechy:
     naglowek[cecha] = cecha  # Nagłówki cech w poziomie
 dane_tabela.append(naglowek)
+
+aktualna_kombinacja = st.session_state["aktualna_kombinacja"]
 
 # Wiersze z wynikami
 for i in range(liczba_wynikow):
@@ -304,7 +311,7 @@ styled_df = df.style.set_properties(**{'text-align': 'center', 'border': '1px so
 
 # --- Wyświetlenie tabeli ze scrollowaniem ---
 st.markdown(f"### Wyniki dla Kombinacji K{aktualna_kombinacja}")
-st.table(styled_df)  # Używam st.table dla lepszej kontroli stylizacji
+st.table(styled_df)
 
 st.divider()
 
