@@ -260,47 +260,49 @@ elif nastepne and aktualne_powtorzenie < liczba_ocen:
     st.rerun()
 
 # --- Wyświetlanie wyników dla wszystkich powtórzeń w bieżącej kombinacji ---
-st.markdown(f"### Wyniki dla Kombinacji {aktualna_kombinacja}")
+import pandas as pd
+
+st.markdown(f"### Wyniki dla Kombinacji K{aktualna_kombinacja}")
+
 if liczba_ocen > 0 and wszystkie_cechy:
-    dane_tabela = []
-    # Wiersz nagłówkowy
-    naglowek = {"Kombinacja": f"K{aktualna_kombinacja}", "Powtórzenie": "P1"}  # Scalanie Powtórzenia dla pierwszego powtórzenia
-    for cecha in wszystkie_cechy:
-        naglowek[cecha] = cecha  # Nagłówki cech w poziomie
-    dane_tabela.append(naglowek)
-    
-    # Wiersze z wynikami
-    for i in range(liczba_wynikow):
-        wiersz = {"Kombinacja": "", "Powtórzenie": ""}  # Puste dla scalania
+    # --- Tworzenie MultiIndexu kolumn: (P1, F1), (P1, F2), (P2, F1), ...
+    kolumny = []
+    for p in range(1, liczba_ocen + 1):
+        for cecha in wszystkie_cechy:
+            kolumny.append((f"P{p}", cecha))
+    multi_index = pd.MultiIndex.from_tuples(kolumny, names=["Powtórzenie", "Cecha"])
+
+    # --- Zbieranie wyników do DataFrame ---
+    dane_wiersze = []
+    for i in range(liczba_wynikow):  # Dla każdego wiersza wyników
+        wiersz = []
         for p in range(1, liczba_ocen + 1):
             rekord = next((r for r in st.session_state.zebrane_dane if r.get("Kombinacja") == aktualna_kombinacja and r.get("Powtórzenie") == p), None)
-            for cecha_idx, cecha in enumerate(wszystkie_cechy):
-                wartosci = rekord.get(cecha, [0] * liczba_wynikow) if rekord else [0] * liczba_wynikow
-                wiersz[cecha] = wartosci[i]  # Wyniki pionowo pod każdą cechą
-        dane_tabela.append(wiersz)
+            for cecha in wszystkie_cechy:
+                wartosci = rekord.get(cecha, [""] * liczba_wynikow) if rekord else [""] * liczba_wynikow
+                wiersz.append(wartosci[i])
+        dane_wiersze.append(wiersz)
 
-    if dane_tabela:
-        df_wyniki = pd.DataFrame(dane_tabela)
-        # Wypełnienie brakujących wartości
-        df_wyniki = df_wyniki.fillna("")
-        # Stylizacja tabeli do symulacji scalania
-        styled_df = df_wyniki.style.set_properties(**{'text-align': 'center', 'border': '1px solid black'}).set_table_styles(
-            [
-                {'selector': 'th', 'props': [('text-align', 'center'), ('border', '1px solid black')]},
-                {'selector': 'td', 'props': [('border', '1px solid black')]},
-            ]
-        ).apply(
-            lambda x: ['background-color: #f0f0f0' if x.name == 0 and pd.notna(x['Kombinacja']) else '' for i in x],
-            axis=1
-        ).apply(
-            lambda x: ['background-color: #d3d3d3' if x.name == 0 and pd.notna(x['Powtórzenie']) else '' for i in x],
-            axis=1
-        ).set_properties(subset=pd.IndexSlice[:, ['Kombinacja']], **{'border-right': '2px solid black', 'vertical-align': 'middle'})
-        st.table(styled_df)
-    else:
-        st.info("Brak zapisanych wyników dla tej kombinacji.")
+    # --- Dodanie kolumny "Kombinacja" jako osobnej kolumny obok MultiIndex ---
+    kolumna_komb = [f"K{aktualna_kombinacja}"] + [""] * (liczba_wynikow - 1)
+    df = pd.DataFrame(dane_wiersze, columns=multi_index)
+    df.insert(0, "Kombinacja", kolumna_komb)
+
+    # --- Stylizacja tabeli ---
+    styled_df = df.style.set_properties(**{
+        'border': '1px solid black',
+        'text-align': 'center'
+    }).set_table_styles([
+        {'selector': 'th', 'props': [('border', '1px solid black'), ('text-align', 'center')]},
+        {'selector': 'td', 'props': [('border', '1px solid black'), ('text-align', 'center')]},
+    ])
+
+    # --- Wyświetlenie tabeli ---
+    st.table(styled_df)
+
 else:
     st.info("Brak zapisanych wyników lub aktywnych cech dla tej kombinacji.")
+
 
 st.divider()
 
