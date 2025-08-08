@@ -265,23 +265,29 @@ if liczba_ocen > 0 and wszystkie_cechy:
     dane_tabela = []
     for k in range(1, liczba_kombinacji + 1):
         for cecha in wszystkie_cechy:
-            for p in range(1, liczba_ocen + 1):
-                rekord = next((r for r in st.session_state.zebrane_dane if r.get("Kombinacja") == k and r.get("Powtórzenie") == p), None)
-                wartosci = rekord.get(cecha, [0] * liczba_wynikow) if rekord else [0] * liczba_wynikow
-                for i in range(liczba_wynikow):
-                    dane_tabela.append({
-                        "Kombinacja": f"K{k}",
-                        "Cecha": cecha,
-                        "Numer wyniku": i + 1,
-                        f"P{p}": wartosci[i]  # Bezpośrednie przypisanie do kolumn powtórzeń
-                    })
+            for i in range(liczba_wynikow):
+                wiersz = {"Kombinacja": f"K{k}" if i == 0 else "", "Cecha": cecha if i == 0 else ""}
+                for p in range(1, liczba_ocen + 1):
+                    rekord = next((r for r in st.session_state.zebrane_dane if r.get("Kombinacja") == k and r.get("Powtórzenie") == p), None)
+                    wartosci = rekord.get(cecha, [0] * liczba_wynikow) if rekord else [0] * liczba_wynikow
+                    wiersz[f"P{p}"] = wartosci[i]
+                dane_tabela.append(wiersz)
+
     if dane_tabela:
         df_wyniki = pd.DataFrame(dane_tabela)
         # Grupowanie i wypełnienie brakujących wartości
-        df_pivot = df_wyniki.groupby(["Kombinacja", "Cecha", "Numer wyniku"]).first().reset_index()
-        # Sortowanie dla zgodności z obrazkiem
-        df_pivot = df_pivot.sort_values(by=["Kombinacja", "Cecha", "Numer wyniku"])
-        st.dataframe(df_pivot, use_container_width=True)
+        df_wyniki = df_wyniki.fillna("")
+        # Scalanie komórek dla Kombinacji i Cech
+        styled_df = df_wyniki.style.set_properties(**{'text-align': 'center'}).set_table_styles(
+            [
+                {'selector': 'th', 'props': [('text-align', 'center')]},
+                {'selector': 'td', 'props': [('border', '1px solid black')]},
+            ]
+        ).apply(
+            lambda x: ['background-color: #f0f0f0' if x.name == 0 and pd.notna(x['Kombinacja']) else '' for i in x],
+            axis=1
+        ).set_properties(subset=pd.IndexSlice[:, ['Kombinacja', 'Cecha']], **{'border-left': '2px solid black'})
+        st.table(styled_df)
     else:
         st.info("Brak zapisanych wyników dla tej kombinacji.")
 else:
