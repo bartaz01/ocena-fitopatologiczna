@@ -270,7 +270,7 @@ wszystkie_cechy = ["F1", "F2"]
 # Jeśli nie masz danych, to tworzymy przykładowe:
 if "zebrane_dane" not in st.session_state:
     st.session_state.zebrane_dane = []
-    # Tworzymy 3 kombinacje (K1..K3) - tak jak na Twoim zdjęciu masz 3 kombinacje
+    # Tworzymy 3 kombinacje (K1..K3)
     for k in range(1, 4):  
         for p in range(1, liczba_ocen + 1):
             st.session_state.zebrane_dane.append({
@@ -283,7 +283,7 @@ if "zebrane_dane" not in st.session_state:
 # --- Dynamiczne wyliczenie liczby kombinacji z danych ---
 liczba_kombinacji = len(set(r["Kombinacja"] for r in st.session_state.zebrane_dane))
 
-# --- Suwak z dostosowanym zakresem ---
+# --- Suwak do wyboru kombinacji ---
 aktualna_kombinacja = st.slider(
     "Wybierz kombinację",
     min_value=1,
@@ -312,11 +312,28 @@ for i in range(liczba_wynikow):
             wiersz.append(wartosc)
     dane_wiersze.append(wiersz)
 
+# --- Tworzenie DataFrame ---
 df = pd.DataFrame(dane_wiersze, columns=multi_index)
-df.index = [f"Wynik {i+1}" for i in range(liczba_wynikow)]
+
+# Zmieniamy indeks na liczby
+df.index = [str(i + 1) for i in range(liczba_wynikow)]
+
+# Dodajemy kolumnę z nazwą kombinacji (pionowy napis)
+kolumna_kombinacja = pd.Series(["K" + str(aktualna_kombinacja)] * liczba_wynikow, name="Kombinacja")
+df.insert(0, ("", "Kombinacja"), kolumna_kombinacja)
 
 # --- Wyświetlenie tabeli ---
 st.markdown(f"### Wyniki dla kombinacji K{aktualna_kombinacja}")
+
+# CSS do wyśrodkowania zawartości tabeli
+st.markdown("""
+    <style>
+        [data-testid="stDataFrame"] td {
+            text-align: center;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 st.dataframe(df, use_container_width=True)
 
 
