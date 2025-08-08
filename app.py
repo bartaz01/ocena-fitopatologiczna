@@ -262,12 +262,13 @@ elif nastepne and aktualne_powtorzenie < liczba_ocen:
 import streamlit as st
 import pandas as pd
 
-# Testowe dane
-liczba_kombinacji = 3
-liczba_ocen = 2
-liczba_wynikow = 3
+# --- Parametry i dane testowe ---
+liczba_kombinacji = 5
+liczba_ocen = 3  # liczba powtórzeń P1, P2, P3
+liczba_wynikow = 4
 wszystkie_cechy = ["Cecha1", "Cecha2"]
 
+# Przykładowe dane do testu (tworzone jeśli ich brak)
 if "zebrane_dane" not in st.session_state:
     st.session_state.zebrane_dane = []
     for k in range(1, liczba_kombinacji + 1):
@@ -275,50 +276,41 @@ if "zebrane_dane" not in st.session_state:
             st.session_state.zebrane_dane.append({
                 "Kombinacja": k,
                 "Powtórzenie": p,
-                "Cecha1": [f"K{k}P{p}W{i}" for i in range(liczba_wynikow)],
+                "Cecha1": [f"K{k}P{p}W{i+1}" for i in range(liczba_wynikow)],
                 "Cecha2": [i * p for i in range(liczba_wynikow)]
             })
 
-if "aktualna_kombinacja" not in st.session_state:
-    st.session_state["aktualna_kombinacja"] = 1
+# --- Suwak wyboru kombinacji ---
+aktualna_kombinacja = st.slider("Wybierz kombinację", 1, liczba_kombinacji, 1)
 
-def update_kombinacja():
-    st.session_state["aktualna_kombinacja"] = st.session_state["slider_komb"]
-
-slider = st.slider(
-    "Wybierz kombinację", 1, liczba_kombinacji,
-    value=st.session_state["aktualna_kombinacja"],
-    key="slider_komb",
-    on_change=update_kombinacja
-)
-
-aktualna_kombinacja = st.session_state["aktualna_kombinacja"]
-kolumny = ["Kombinacja", "Powtórzenie"] + wszystkie_cechy
-
-dane_tabela = []
-
-naglowek = {
-    "Kombinacja": f"K{aktualna_kombinacja}",
-    "Powtórzenie": "P1"
-}
-for cecha in wszystkie_cechy:
-    naglowek[cecha] = cecha
-dane_tabela.append(naglowek)
-
-for i in range(liczba_wynikow):
-    wiersz = {"Kombinacja": "", "Powtórzenie": ""}
-    rekord = next((r for r in st.session_state.zebrane_dane
-                   if r["Kombinacja"] == aktualna_kombinacja and r["Powtórzenie"] == 1), None)
+# --- Budowa multiindexu dla kolumn: pierwszy poziom = powtórzenia P1, P2, ..., drugi poziom = cechy ---
+kolumny = []
+for p in range(1, liczba_ocen + 1):
     for cecha in wszystkie_cechy:
-        wartosci = rekord.get(cecha, [""] * liczba_wynikow) if rekord else [""] * liczba_wynikow
-        wiersz[cecha] = wartosci[i]
-    dane_tabela.append(wiersz)
+        kolumny.append((f"P{p}", cecha))
+multi_index = pd.MultiIndex.from_tuples(kolumny, names=["Powtórzenie", "Cecha"])
 
-df = pd.DataFrame(dane_tabela, columns=kolumny)
+# --- Budowa danych: wiersze = liczba_wynikow, kolumny = multiindex powtórzeń i cech ---
+dane_wiersze = []
+for i in range(liczba_wynikow):
+    wiersz = []
+    for p in range(1, liczba_ocen + 1):
+        rekord = next((r for r in st.session_state.zebrane_dane
+                       if r["Kombinacja"] == aktualna_kombinacja and r["Powtórzenie"] == p), None)
+        for cecha in wszystkie_cechy:
+            wartosc = rekord[cecha][i] if rekord else ""
+            wiersz.append(wartosc)
+    dane_wiersze.append(wiersz)
 
-st.write(df)  # Podgląd danych
+df = pd.DataFrame(dane_wiersze, columns=multi_index)
 
-st.dataframe(df)  # Wyświetlenie tabeli
+# --- Opcjonalnie dodaj indeks wierszy (np. numer próbki) ---
+df.index = [f"Wynik {i+1}" for i in range(liczba_wynikow)]
+
+# --- Wyświetlenie tabeli z multiindex ---
+st.markdown(f"### Wyniki dla Kombinacji K{aktualna_kombinacja}")
+st.dataframe(df, use_container_width=True)
+
 
 st.divider()
 
