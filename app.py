@@ -259,59 +259,69 @@ elif nastepne and aktualne_powtorzenie < liczba_ocen:
     st.session_state.powtorzenie += 1
     st.rerun()
 
+import streamlit as st
+import pandas as pd
+
+# --- Przykładowe dane (dopasuj do swojego kontekstu) ---
+liczba_kombinacji = 5
+liczba_ocen = 3
+liczba_wynikow = 4
+wszystkie_cechy = ["Cecha1", "Cecha2"]
+
+# Przykładowe dane w sesji (jeśli jeszcze ich nie ma, dla testu)
+if "zebrane_dane" not in st.session_state:
+    st.session_state.zebrane_dane = []
+    for k in range(1, liczba_kombinacji + 1):
+        for p in range(1, liczba_ocen + 1):
+            st.session_state.zebrane_dane.append({
+                "Kombinacja": k,
+                "Powtórzenie": p,
+                "Cecha1": [f"K{k}P{p}W{i}" for i in range(liczba_wynikow)],
+                "Cecha2": [i * p for i in range(liczba_wynikow)]
+            })
+
 # --- Inicjalizacja sesji dla aktualnej kombinacji ---
 if "aktualna_kombinacja" not in st.session_state:
     st.session_state["aktualna_kombinacja"] = 1
+
+aktualna_kombinacja = st.session_state["aktualna_kombinacja"]
 
 # --- Budowa kolumn: Kombinacja, Powtórzenie i Cechy ---
 kolumny = ["Kombinacja", "Powtórzenie"] + wszystkie_cechy  # Podstawowe kolumny
 
 # --- Wiersze z wynikami ---
 dane_tabela = []
-# Wiersz nagłówkowy z suwakiem w Kombinacji
+
+# Suwak do wyboru kombinacji - wstawiony w nagłówek tabeli
+def update_kombinacja():
+    st.session_state["aktualna_kombinacja"] = st.session_state["slider_komb"]
+
+slider = st.slider(
+    "Wybierz kombinację", 1, liczba_kombinacji,
+    value=aktualna_kombinacja,
+    key="slider_komb",
+    on_change=update_kombinacja
+)
+
 naglowek = {
-    "Kombinacja": st.slider("Wybierz kombinację", 1, liczba_kombinacji, st.session_state["aktualna_kombinacja"], key=f"slider_k{aktualna_kombinacja}",
-                            on_change=lambda: st.session_state.update({"aktualna_kombinacja": st.session_state[f"slider_k{aktualna_kombinacja}"]}, st.rerun())),
-    "Powtórzenie": "P1"  # Scalanie Powtórzenia
+    "Kombinacja": f"K{st.session_state['aktualna_kombinacja']}",
+    "Powtórzenie": "P1"  # scalone powtórzenie w nagłówku
 }
 for cecha in wszystkie_cechy:
-    naglowek[cecha] = cecha  # Nagłówki cech w poziomie
+    naglowek[cecha] = cecha
 dane_tabela.append(naglowek)
 
-aktualna_kombinacja = st.session_state["aktualna_kombinacja"]
-
-# Wiersze z wynikami
+# Wiersze wyników — pobieramy tylko z pierwszego powtórzenia (P1), jeśli chcesz inne, zmodyfikuj
 for i in range(liczba_wynikow):
-    wiersz = {"Kombinacja": "", "Powtórzenie": ""}  # Puste dla scalania
+    wiersz = {"Kombinacja": "", "Powtórzenie": ""}
     for p in range(1, liczba_ocen + 1):
         rekord = next((r for r in st.session_state.zebrane_dane
-                       if r.get("Kombinacja") == aktualna_kombinacja and r.get("Powtórzenie") == p), None)
+                       if r.get("Kombinacja") == st.session_state["aktualna_kombinacja"] and r.get("Powtórzenie") == p), None)
         for cecha in wszystkie_cechy:
             wartosci = rekord.get(cecha, [""] * liczba_wynikow) if rekord else [""] * liczba_wynikow
-            if p == 1:  # Pobieramy wyniki tylko dla pierwszego powtórzenia (dostosuj, jeśli więcej)
-                wiersz[cecha] = wartosci[i]
-    dane_tabela.append(wiersz)
+            if p == 1:
+                wiersz[cecha] = wartosci
 
-# --- Tworzenie DataFrame ---
-df = pd.DataFrame(dane_tabela, columns=kolumny)
-
-# --- Stylizacja tabeli do symulacji scalania ---
-styled_df = df.style.set_properties(**{'text-align': 'center', 'border': '1px solid black'}).set_table_styles(
-    [
-        {'selector': 'th', 'props': [('text-align', 'center'), ('border', '1px solid black')]},
-        {'selector': 'td', 'props': [('border', '1px solid black')]},
-    ]
-).apply(
-    lambda x: ['background-color: #f0f0f0' if x.name == 0 and pd.notna(x['Kombinacja']) else '' for i in x],
-    axis=1
-).apply(
-    lambda x: ['background-color: #d3d3d3' if x.name == 0 and pd.notna(x['Powtórzenie']) else '' for i in x],
-    axis=1
-).set_properties(subset=pd.IndexSlice[:, ['Kombinacja']], **{'border-right': '2px solid black', 'vertical-align': 'middle'})
-
-# --- Wyświetlenie tabeli ze scrollowaniem ---
-st.markdown(f"### Wyniki dla Kombinacji K{aktualna_kombinacja}")
-st.table(styled_df)
 
 st.divider()
 
