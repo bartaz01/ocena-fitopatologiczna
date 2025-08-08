@@ -264,29 +264,24 @@ st.markdown(f"### Wyniki dla Kombinacji {aktualna_kombinacja}")
 if liczba_ocen > 0 and wszystkie_cechy:
     dane_tabela = []
     for k in range(1, liczba_kombinacji + 1):
+        # Wiersz nagłówkowy z Kombinacją i Powtórzeniem
+        naglowek = {"Kombinacja": f"K{k}", "Powtórzenie": "P1" if k == 1 else ""}  # Scalanie Powtórzenia
+        for cecha in wszystkie_cechy:
+            naglowek[cecha] = cecha  # Nagłówki cech w poziomie
+        dane_tabela.append(naglowek)
+        # Wiersze z wynikami
         for i in range(liczba_wynikow):
-            wiersz = {"Kombinacja": f"K{k}" if i == 0 else ""}
-            if i == 0:  # Tylko w pierwszym wierszu ustawiamy nagłówki cech
-                for cecha in wszystkie_cechy:
-                    wiersz[cecha] = cecha
-            else:
-                for cecha in wszystkie_cechy:
-                    wiersz[cecha] = ""
+            wiersz = {"Kombinacja": "", "Powtórzenie": ""}  # Puste dla scalania
             for p in range(1, liczba_ocen + 1):
-                if i == 0:  # Tylko w pierwszym wierszu ustawiamy Powtórzenie
-                    wiersz[f"P{p}"] = f"P{p}" if p == 1 else ""
-                else:
-                    wiersz[f"P{p}"] = ""
                 rekord = next((r for r in st.session_state.zebrane_dane if r.get("Kombinacja") == k and r.get("Powtórzenie") == p), None)
-                wartosci = rekord.get(wszystkie_cechy[0], [0] * liczba_wynikow) if rekord else [0] * liczba_wynikow
                 for cecha_idx, cecha in enumerate(wszystkie_cechy):
-                    wartosci_cechy = rekord.get(cecha, [0] * liczba_wynikow) if rekord else [0] * liczba_wynikow
-                    wiersz[f"{cecha}_wynik"] = wartosci_cechy[i]
+                    wartosci = rekord.get(cecha, [0] * liczba_wynikow) if rekord else [0] * liczba_wynikow
+                    wiersz[cecha] = wartosci[i]  # Wyniki pionowo pod każdą cechą
             dane_tabela.append(wiersz)
 
     if dane_tabela:
         df_wyniki = pd.DataFrame(dane_tabela)
-        # Grupowanie i wypełnienie brakujących wartości
+        # Wypełnienie brakujących wartości
         df_wyniki = df_wyniki.fillna("")
         # Stylizacja tabeli do symulacji scalania
         styled_df = df_wyniki.style.set_properties(**{'text-align': 'center', 'border': '1px solid black'}).set_table_styles(
@@ -298,7 +293,7 @@ if liczba_ocen > 0 and wszystkie_cechy:
             lambda x: ['background-color: #f0f0f0' if x.name == 0 and pd.notna(x['Kombinacja']) else '' for i in x],
             axis=1
         ).apply(
-            lambda x: ['background-color: #d3d3d3' if x.name == 0 and any(col.startswith('P') for col in x.index) else '' for i in x],
+            lambda x: ['background-color: #d3d3d3' if x.name == 0 and pd.notna(x['Powtórzenie']) else '' for i in x],
             axis=1
         ).set_properties(subset=pd.IndexSlice[:, ['Kombinacja']], **{'border-right': '2px solid black', 'vertical-align': 'middle'})
         st.table(styled_df)
