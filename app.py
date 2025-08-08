@@ -262,78 +262,63 @@ elif nastepne and aktualne_powtorzenie < liczba_ocen:
 import streamlit as st
 import pandas as pd
 
-# --- Parametry i dane testowe ---
-liczba_kombinacji = 5
-liczba_ocen = 3  # liczba powtórzeń P1, P2, P3
-liczba_wynikow = 4
-wszystkie_cechy = ["Cecha1", "Cecha2"]
+# --- Dane testowe ---
+liczba_ocen = 3  # P1, P2, P3
+liczba_wynikow = 6
+wszystkie_cechy = ["F1", "F2"]
 
-# Przykładowe dane do testu (tworzone jeśli ich brak)
+# Jeśli nie masz danych, to tworzymy przykładowe:
 if "zebrane_dane" not in st.session_state:
     st.session_state.zebrane_dane = []
-    for k in range(1, liczba_kombinacji + 1):
+    # Tworzymy 3 kombinacje (K1..K3) - tak jak na Twoim zdjęciu masz 3 kombinacje
+    for k in range(1, 4):  
         for p in range(1, liczba_ocen + 1):
             st.session_state.zebrane_dane.append({
                 "Kombinacja": k,
                 "Powtórzenie": p,
-                "Cecha1": [f"K{k}P{p}W{i+1}" for i in range(liczba_wynikow)],
-                "Cecha2": [i * p for i in range(liczba_wynikow)]
+                "F1": [f"K{k}P{p}W{i+1}" for i in range(liczba_wynikow)],
+                "F2": [f"K{k}P{p}W{i+1}_2" for i in range(liczba_wynikow)]
             })
 
-# --- Inicjalizacja sesji dla aktualnej kombinacji ---
-if "aktualna_kombinacja" not in st.session_state:
-    st.session_state["aktualna_kombinacja"] = 1
+# --- Dynamiczne wyliczenie liczby kombinacji z danych ---
+liczba_kombinacji = len(set(r["Kombinacja"] for r in st.session_state.zebrane_dane))
 
-# --- Budowa kolumn: Kombinacja, Powtórzenie i Cechy ---
-kolumny = ["Kombinacja", "Powtórzenie"] + wszystkie_cechy  # Podstawowe kolumny
+# --- Suwak z dostosowanym zakresem ---
+aktualna_kombinacja = st.slider(
+    "Wybierz kombinację",
+    min_value=1,
+    max_value=liczba_kombinacji,
+    value=st.session_state.get("aktualna_kombinacja", 1),
+    key="slider_komb"
+)
+st.session_state["aktualna_kombinacja"] = aktualna_kombinacja
 
-# --- Wiersze z wynikami ---
-dane_tabela = []
-# Wiersz nagłówkowy z suwakiem w Kombinacji
-naglowek = {
-    "Kombinacja": st.slider("Wybierz kombinację", 1, liczba_kombinacji, st.session_state["aktualna_kombinacja"],
-                            key=f"slider_k{st.session_state['aktualna_kombinacja']}",
-                            on_change=lambda: st.session_state.update({"aktualna_kombinacja": st.session_state[f"slider_k{st.session_state['aktualna_kombinacja']}"]}, st.rerun())),
-    "Powtórzenie": "P1"  # Scalanie Powtórzenia (dla uproszczenia jedno powtórzenie)
-}
-for cecha in wszystkie_cechy:
-    naglowek[cecha] = cecha  # Nagłówki cech w poziomie
-dane_tabela.append(naglowek)
+# --- Budowa kolumn multiindex ---
+kolumny = []
+for p in range(1, liczba_ocen + 1):
+    for cecha in wszystkie_cechy:
+        kolumny.append((f"P{p}", cecha))
+multi_index = pd.MultiIndex.from_tuples(kolumny, names=["Powtórzenie", "Cecha"])
 
-aktualna_kombinacja = st.session_state["aktualna_kombinacja"]
-
-# Wiersze z wynikami
+# --- Budowa danych ---
+dane_wiersze = []
 for i in range(liczba_wynikow):
-    wiersz = {"Kombinacja": "", "Powtórzenie": ""}  # Puste dla scalania
+    wiersz = []
     for p in range(1, liczba_ocen + 1):
         rekord = next((r for r in st.session_state.zebrane_dane
                        if r["Kombinacja"] == aktualna_kombinacja and r["Powtórzenie"] == p), None)
         for cecha in wszystkie_cechy:
-            wartosci = rekord.get(cecha, [""] * liczba_wynikow) if rekord else [""] * liczba_wynikow
-            if p == 1:  # Pobieramy wyniki tylko dla pierwszego powtórzenia (dostosuj, jeśli więcej)
-                wiersz[cecha] = wartosci[i]
-    dane_tabela.append(wiersz)
+            wartosc = rekord[cecha][i] if rekord else ""
+            wiersz.append(wartosc)
+    dane_wiersze.append(wiersz)
 
-# --- Tworzenie DataFrame ---
-df = pd.DataFrame(dane_tabela, columns=kolumny)
+df = pd.DataFrame(dane_wiersze, columns=multi_index)
+df.index = [f"Wynik {i+1}" for i in range(liczba_wynikow)]
 
-# --- Stylizacja tabeli do symulacji scalania ---
-styled_df = df.style.set_properties(**{'text-align': 'center', 'border': '1px solid black'}).set_table_styles(
-    [
-        {'selector': 'th', 'props': [('text-align', 'center'), ('border', '1px solid black')]},
-        {'selector': 'td', 'props': [('border', '1px solid black')]},
-    ]
-).apply(
-    lambda x: ['background-color: #f0f0f0' if x.name == 0 and pd.notna(x['Kombinacja']) else '' for i in x],
-    axis=1
-).apply(
-    lambda x: ['background-color: #d3d3d3' if x.name == 0 and pd.notna(x['Powtórzenie']) else '' for i in x],
-    axis=1
-).set_properties(subset=pd.IndexSlice[:, ['Kombinacja']], **{'border-right': '2px solid black', 'vertical-align': 'middle'})
+# --- Wyświetlenie tabeli ---
+st.markdown(f"### Wyniki dla kombinacji K{aktualna_kombinacja}")
+st.dataframe(df, use_container_width=True)
 
-# --- Wyświetlenie tabeli ze scrollowaniem ---
-st.markdown(f"### Wyniki dla Kombinacji K{aktualna_kombinacja}")
-st.table(styled_df)
 
 st.divider()
 
