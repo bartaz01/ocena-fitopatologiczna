@@ -266,21 +266,22 @@ if liczba_ocen > 0 and wszystkie_cechy:
     for k in range(1, liczba_kombinacji + 1):
         for i in range(liczba_wynikow):
             wiersz = {"Kombinacja": f"K{k}" if i == 0 else ""}
-            for cecha_idx, cecha in enumerate(wszystkie_cechy):
-                for p in range(1, liczba_ocen + 1):
-                    if i == 0 and cecha_idx == 0:  # Tylko dla pierwszego wiersza i pierwszej cechy
-                        wiersz[f"P{p}"] = f"P{p}" if cecha_idx == 0 else ""
-                    else:
-                        wiersz[f"P{p}"] = ""
-                    rekord = next((r for r in st.session_state.zebrane_dane if r.get("Kombinacja") == k and r.get("Powtórzenie") == p), None)
-                    wartosci = rekord.get(cecha, [0] * liczba_wynikow) if rekord else [0] * liczba_wynikow
-                    if cecha_idx == 0 and i == 0:  # Nagłówki cech tylko w pierwszym wierszu
-                        wiersz[cecha] = cecha
-                    elif i == 0:
-                        wiersz[cecha] = cecha
-                    else:
-                        wiersz[cecha] = ""
-                    wiersz[f"{cecha}_wynik_{i+1}"] = wartosci[i]
+            if i == 0:  # Tylko w pierwszym wierszu ustawiamy nagłówki cech
+                for cecha in wszystkie_cechy:
+                    wiersz[cecha] = cecha
+            else:
+                for cecha in wszystkie_cechy:
+                    wiersz[cecha] = ""
+            for p in range(1, liczba_ocen + 1):
+                if i == 0:  # Tylko w pierwszym wierszu ustawiamy Powtórzenie
+                    wiersz[f"P{p}"] = f"P{p}" if p == 1 else ""
+                else:
+                    wiersz[f"P{p}"] = ""
+                rekord = next((r for r in st.session_state.zebrane_dane if r.get("Kombinacja") == k and r.get("Powtórzenie") == p), None)
+                wartosci = rekord.get(wszystkie_cechy[0], [0] * liczba_wynikow) if rekord else [0] * liczba_wynikow
+                for cecha_idx, cecha in enumerate(wszystkie_cechy):
+                    wartosci_cechy = rekord.get(cecha, [0] * liczba_wynikow) if rekord else [0] * liczba_wynikow
+                    wiersz[f"{cecha}_wynik"] = wartosci_cechy[i]
             dane_tabela.append(wiersz)
 
     if dane_tabela:
