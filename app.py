@@ -262,13 +262,12 @@ elif nastepne and aktualne_powtorzenie < liczba_ocen:
 import streamlit as st
 import pandas as pd
 
-# --- Przykładowe dane (dopasuj do swojego kontekstu) ---
-liczba_kombinacji = 5
-liczba_ocen = 3
-liczba_wynikow = 4
+# Testowe dane
+liczba_kombinacji = 3
+liczba_ocen = 2
+liczba_wynikow = 3
 wszystkie_cechy = ["Cecha1", "Cecha2"]
 
-# Przykładowe dane w sesji (jeśli jeszcze ich nie ma, dla testu)
 if "zebrane_dane" not in st.session_state:
     st.session_state.zebrane_dane = []
     for k in range(1, liczba_kombinacji + 1):
@@ -280,48 +279,46 @@ if "zebrane_dane" not in st.session_state:
                 "Cecha2": [i * p for i in range(liczba_wynikow)]
             })
 
-# --- Inicjalizacja sesji dla aktualnej kombinacji ---
 if "aktualna_kombinacja" not in st.session_state:
     st.session_state["aktualna_kombinacja"] = 1
 
-aktualna_kombinacja = st.session_state["aktualna_kombinacja"]
-
-# --- Budowa kolumn: Kombinacja, Powtórzenie i Cechy ---
-kolumny = ["Kombinacja", "Powtórzenie"] + wszystkie_cechy  # Podstawowe kolumny
-
-# --- Wiersze z wynikami ---
-dane_tabela = []
-
-# Suwak do wyboru kombinacji - wstawiony w nagłówek tabeli
 def update_kombinacja():
     st.session_state["aktualna_kombinacja"] = st.session_state["slider_komb"]
 
 slider = st.slider(
     "Wybierz kombinację", 1, liczba_kombinacji,
-    value=aktualna_kombinacja,
+    value=st.session_state["aktualna_kombinacja"],
     key="slider_komb",
     on_change=update_kombinacja
 )
 
+aktualna_kombinacja = st.session_state["aktualna_kombinacja"]
+kolumny = ["Kombinacja", "Powtórzenie"] + wszystkie_cechy
+
+dane_tabela = []
+
 naglowek = {
-    "Kombinacja": f"K{st.session_state['aktualna_kombinacja']}",
-    "Powtórzenie": "P1"  # scalone powtórzenie w nagłówku
+    "Kombinacja": f"K{aktualna_kombinacja}",
+    "Powtórzenie": "P1"
 }
 for cecha in wszystkie_cechy:
     naglowek[cecha] = cecha
 dane_tabela.append(naglowek)
 
-# Wiersze wyników — pobieramy tylko z pierwszego powtórzenia (P1), jeśli chcesz inne, zmodyfikuj
 for i in range(liczba_wynikow):
     wiersz = {"Kombinacja": "", "Powtórzenie": ""}
-    for p in range(1, liczba_ocen + 1):
-        rekord = next((r for r in st.session_state.zebrane_dane
-                       if r.get("Kombinacja") == st.session_state["aktualna_kombinacja"] and r.get("Powtórzenie") == p), None)
-        for cecha in wszystkie_cechy:
-            wartosci = rekord.get(cecha, [""] * liczba_wynikow) if rekord else [""] * liczba_wynikow
-            if p == 1:
-                wiersz[cecha] = wartosci
+    rekord = next((r for r in st.session_state.zebrane_dane
+                   if r["Kombinacja"] == aktualna_kombinacja and r["Powtórzenie"] == 1), None)
+    for cecha in wszystkie_cechy:
+        wartosci = rekord.get(cecha, [""] * liczba_wynikow) if rekord else [""] * liczba_wynikow
+        wiersz[cecha] = wartosci[i]
+    dane_tabela.append(wiersz)
 
+df = pd.DataFrame(dane_tabela, columns=kolumny)
+
+st.write(df)  # Podgląd danych
+
+st.dataframe(df)  # Wyświetlenie tabeli
 
 st.divider()
 
