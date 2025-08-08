@@ -267,11 +267,10 @@ liczba_ocen = 3  # P1, P2, P3
 liczba_wynikow = 6
 wszystkie_cechy = ["F1", "F2"]
 
-# Jeśli nie masz danych, to tworzymy przykładowe:
+# --- Inicjalizacja danych ---
 if "zebrane_dane" not in st.session_state:
     st.session_state.zebrane_dane = []
-    # Tworzymy 3 kombinacje (K1..K3)
-    for k in range(1, 4):  
+    for k in range(1, 4):  # 3 kombinacje
         for p in range(1, liczba_ocen + 1):
             st.session_state.zebrane_dane.append({
                 "Kombinacja": k,
@@ -280,10 +279,15 @@ if "zebrane_dane" not in st.session_state:
                 "F2": [f"K{k}P{p}W{i+1}_2" for i in range(liczba_wynikow)]
             })
 
-# --- Dynamiczne wyliczenie liczby kombinacji z danych ---
+# --- Wyliczenie liczby kombinacji ---
 liczba_kombinacji = len(set(r["Kombinacja"] for r in st.session_state.zebrane_dane))
 
-# --- Suwak do wyboru kombinacji ---
+# --- Ochrona przed brakiem danych ---
+if liczba_kombinacji == 0:
+    st.error("Brak danych do wyświetlenia.")
+    st.stop()
+
+# --- Suwak wyboru kombinacji ---
 aktualna_kombinacja = st.slider(
     "Wybierz kombinację",
     min_value=1,
@@ -293,7 +297,7 @@ aktualna_kombinacja = st.slider(
 )
 st.session_state["aktualna_kombinacja"] = aktualna_kombinacja
 
-# --- Budowa kolumn multiindex ---
+# --- Kolumny multiindex dla danych ---
 kolumny = []
 for p in range(1, liczba_ocen + 1):
     for cecha in wszystkie_cechy:
@@ -315,27 +319,27 @@ for i in range(liczba_wynikow):
 # --- Tworzenie DataFrame ---
 df = pd.DataFrame(dane_wiersze, columns=multi_index)
 
-# Zmieniamy indeks na liczby
-df.index = [str(i + 1) for i in range(liczba_wynikow)]
+# Dodajemy kolumnę "Kombinacja" jako pierwszą
+df.insert(0, ("", "Kombinacja"), [f"K{aktualna_kombinacja}"] * liczba_wynikow)
 
-# Dodajemy kolumnę z nazwą kombinacji (pionowy napis)
-kolumna_kombinacja = pd.Series(["K" + str(aktualna_kombinacja)] * liczba_wynikow, name="Kombinacja")
-df.insert(0, ("", "Kombinacja"), kolumna_kombinacja)
+# Dodajemy numerację jako drugą kolumnę (1,2,3...)
+df.insert(1, ("", "Nr"), [str(i + 1) for i in range(liczba_wynikow)])
 
 # --- Wyświetlenie tabeli ---
 st.markdown(f"### Wyniki dla kombinacji K{aktualna_kombinacja}")
 
-# CSS do wyśrodkowania zawartości tabeli
+# --- CSS do wyśrodkowania tekstu w tabeli ---
 st.markdown("""
     <style>
-        [data-testid="stDataFrame"] td {
-            text-align: center;
+        [data-testid="stDataFrame"] td,
+        [data-testid="stDataFrame"] th {
+            text-align: center !important;
+            vertical-align: middle !important;
         }
     </style>
 """, unsafe_allow_html=True)
 
 st.dataframe(df, use_container_width=True)
-
 
 st.divider()
 
