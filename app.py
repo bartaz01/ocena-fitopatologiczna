@@ -263,21 +263,21 @@ elif nastepne and aktualne_powtorzenie < liczba_ocen:
 st.markdown(f"### Wyniki dla Kombinacji {aktualna_kombinacja}")
 if liczba_ocen > 0 and wszystkie_cechy:
     dane_tabela = []
-    for k in range(1, liczba_kombinacji + 1):
-        # Wiersz nagłówkowy z Kombinacją i Powtórzeniem
-        naglowek = {"Kombinacja": f"K{k}", "Powtórzenie": "P1" if k == 1 else ""}  # Scalanie Powtórzenia
-        for cecha in wszystkie_cechy:
-            naglowek[cecha] = cecha  # Nagłówki cech w poziomie
-        dane_tabela.append(naglowek)
-        # Wiersze z wynikami
-        for i in range(liczba_wynikow):
-            wiersz = {"Kombinacja": "", "Powtórzenie": ""}  # Puste dla scalania
-            for p in range(1, liczba_ocen + 1):
-                rekord = next((r for r in st.session_state.zebrane_dane if r.get("Kombinacja") == k and r.get("Powtórzenie") == p), None)
-                for cecha_idx, cecha in enumerate(wszystkie_cechy):
-                    wartosci = rekord.get(cecha, [0] * liczba_wynikow) if rekord else [0] * liczba_wynikow
-                    wiersz[cecha] = wartosci[i]  # Wyniki pionowo pod każdą cechą
-            dane_tabela.append(wiersz)
+    # Wiersz nagłówkowy
+    naglowek = {"Kombinacja": f"K{aktualna_kombinacja}", "Powtórzenie": "P1"}  # Scalanie Powtórzenia dla pierwszego powtórzenia
+    for cecha in wszystkie_cechy:
+        naglowek[cecha] = cecha  # Nagłówki cech w poziomie
+    dane_tabela.append(naglowek)
+    
+    # Wiersze z wynikami
+    for i in range(liczba_wynikow):
+        wiersz = {"Kombinacja": "", "Powtórzenie": ""}  # Puste dla scalania
+        for p in range(1, liczba_ocen + 1):
+            rekord = next((r for r in st.session_state.zebrane_dane if r.get("Kombinacja") == aktualna_kombinacja and r.get("Powtórzenie") == p), None)
+            for cecha_idx, cecha in enumerate(wszystkie_cechy):
+                wartosci = rekord.get(cecha, [0] * liczba_wynikow) if rekord else [0] * liczba_wynikow
+                wiersz[cecha] = wartosci[i]  # Wyniki pionowo pod każdą cechą
+        dane_tabela.append(wiersz)
 
     if dane_tabela:
         df_wyniki = pd.DataFrame(dane_tabela)
