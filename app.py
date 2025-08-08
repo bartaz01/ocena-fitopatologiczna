@@ -280,37 +280,60 @@ if "zebrane_dane" not in st.session_state:
                 "Cecha2": [i * p for i in range(liczba_wynikow)]
             })
 
-# --- Suwak wyboru kombinacji ---
-aktualna_kombinacja = st.slider("Wybierz kombinację", 1, liczba_kombinacji, 1)
+# --- Inicjalizacja sesji dla aktualnej kombinacji ---
+if "aktualna_kombinacja" not in st.session_state:
+    st.session_state["aktualna_kombinacja"] = 1
 
-# --- Budowa multiindexu dla kolumn: pierwszy poziom = powtórzenia P1, P2, ..., drugi poziom = cechy ---
-kolumny = []
-for p in range(1, liczba_ocen + 1):
-    for cecha in wszystkie_cechy:
-        kolumny.append((f"P{p}", cecha))
-multi_index = pd.MultiIndex.from_tuples(kolumny, names=["Powtórzenie", "Cecha"])
+# --- Budowa kolumn: Kombinacja, Powtórzenie i Cechy ---
+kolumny = ["Kombinacja", "Powtórzenie"] + wszystkie_cechy  # Podstawowe kolumny
 
-# --- Budowa danych: wiersze = liczba_wynikow, kolumny = multiindex powtórzeń i cech ---
-dane_wiersze = []
+# --- Wiersze z wynikami ---
+dane_tabela = []
+# Wiersz nagłówkowy z suwakiem w Kombinacji
+naglowek = {
+    "Kombinacja": st.slider("Wybierz kombinację", 1, liczba_kombinacji, st.session_state["aktualna_kombinacja"],
+                            key=f"slider_k{st.session_state['aktualna_kombinacja']}",
+                            on_change=lambda: st.session_state.update({"aktualna_kombinacja": st.session_state[f"slider_k{st.session_state['aktualna_kombinacja']}"]}, st.rerun())),
+    "Powtórzenie": "P1"  # Scalanie Powtórzenia (dla uproszczenia jedno powtórzenie)
+}
+for cecha in wszystkie_cechy:
+    naglowek[cecha] = cecha  # Nagłówki cech w poziomie
+dane_tabela.append(naglowek)
+
+aktualna_kombinacja = st.session_state["aktualna_kombinacja"]
+
+# Wiersze z wynikami
 for i in range(liczba_wynikow):
-    wiersz = []
+    wiersz = {"Kombinacja": "", "Powtórzenie": ""}  # Puste dla scalania
     for p in range(1, liczba_ocen + 1):
         rekord = next((r for r in st.session_state.zebrane_dane
                        if r["Kombinacja"] == aktualna_kombinacja and r["Powtórzenie"] == p), None)
         for cecha in wszystkie_cechy:
-            wartosc = rekord[cecha][i] if rekord else ""
-            wiersz.append(wartosc)
-    dane_wiersze.append(wiersz)
+            wartosci = rekord.get(cecha, [""] * liczba_wynikow) if rekord else [""] * liczba_wynikow
+            if p == 1:  # Pobieramy wyniki tylko dla pierwszego powtórzenia (dostosuj, jeśli więcej)
+                wiersz[cecha] = wartosci[i]
+    dane_tabela.append(wiersz)
 
-df = pd.DataFrame(dane_wiersze, columns=multi_index)
+# --- Tworzenie DataFrame ---
+df = pd.DataFrame(dane_tabela, columns=kolumny)
 
-# --- Opcjonalnie dodaj indeks wierszy (np. numer próbki) ---
-df.index = [f"Wynik {i+1}" for i in range(liczba_wynikow)]
+# --- Stylizacja tabeli do symulacji scalania ---
+styled_df = df.style.set_properties(**{'text-align': 'center', 'border': '1px solid black'}).set_table_styles(
+    [
+        {'selector': 'th', 'props': [('text-align', 'center'), ('border', '1px solid black')]},
+        {'selector': 'td', 'props': [('border', '1px solid black')]},
+    ]
+).apply(
+    lambda x: ['background-color: #f0f0f0' if x.name == 0 and pd.notna(x['Kombinacja']) else '' for i in x],
+    axis=1
+).apply(
+    lambda x: ['background-color: #d3d3d3' if x.name == 0 and pd.notna(x['Powtórzenie']) else '' for i in x],
+    axis=1
+).set_properties(subset=pd.IndexSlice[:, ['Kombinacja']], **{'border-right': '2px solid black', 'vertical-align': 'middle'})
 
-# --- Wyświetlenie tabeli z multiindex ---
+# --- Wyświetlenie tabeli ze scrollowaniem ---
 st.markdown(f"### Wyniki dla Kombinacji K{aktualna_kombinacja}")
-st.dataframe(df, use_container_width=True)
-
+st.table(styled_df)
 
 st.divider()
 
